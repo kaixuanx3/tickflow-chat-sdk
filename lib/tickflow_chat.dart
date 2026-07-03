@@ -6,7 +6,10 @@
 /// stay importable without Flutter.
 library;
 
+export 'src/client/chat_client.dart';
 export 'src/config/chat_config.dart';
+export 'src/engine/chat_session_engine.dart';
+export 'src/engine/chat_session_state.dart';
 export 'src/models/chat_exception.dart';
 export 'src/models/chat_message.dart';
 export 'src/models/chat_role.dart';
