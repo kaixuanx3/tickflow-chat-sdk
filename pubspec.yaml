@@ -12,6 +12,7 @@ dependencies:
   fetch_client: ^1.2.1
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.3.0 # matches the app's pin; used only by the riverpod barrel
   http: ^1.2.0
   meta: ^1.12.0
 

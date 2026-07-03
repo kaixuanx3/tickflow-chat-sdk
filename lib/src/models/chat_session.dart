@@ -12,6 +12,11 @@ class ChatSession {
         status: SessionStatus.fromWire(json['status'] as String? ?? ''),
       );
 
+  /// Placeholder for attaching to a session by id before server state is
+  /// known (a fresh session is `ai`/`open`; history hydration is Phase 1).
+  factory ChatSession.stub(String id) =>
+      ChatSession(id: id, mode: SessionMode.ai, status: SessionStatus.open);
+
   final String id;
   final SessionMode mode;
   final SessionStatus status;
