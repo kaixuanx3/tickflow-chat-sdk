@@ -69,6 +69,18 @@ Core invariants:
 - L10n: gen-l10n, en + zh; Material 3 theming; `flutter_lints` 6; SDK strings must go through the localization delegate (both locales), never hardcoded.
 - Consumption: path dependency during development, git tag pin for releases. Semver is defined by the three barrels; anything under `src/` moves freely.
 
+## Design deltas (apply in the widget phase, P4)
+
+From the UI/UX review of the prototype (`Tickflow Support Chat.dc.html`) — the prototype is the visual reference, these corrections win:
+
+- Darken the dark-theme user bubble: white on `#3B6EF0` is ≈4.49:1, borderline AA fail (light theme `#2E64F0` ≈5.0:1 passes).
+- Hit areas ≥44px everywhere; the prototype's 38px header buttons and ~31px chips are visuals only.
+- Composer is a multiline `TextField` (prototype is a single-line input).
+- Icon-only buttons (escalate person icon, send) need tooltips/semantic labels.
+- Announce a completed reply to screen readers once on settle — never per token.
+- Respect `MediaQuery.disableAnimations` (caret blink, typing dots, entrance fades) and the system text scale (prototype uses fixed px).
+- Fonts in the prototype (Manrope/IBM Plex) are illustrative; the widget inherits `Theme.of(context)`.
+
 ## Working notes
 
 - Roadmap: P0 walking skeleton (config → gateway → SSE parser → engine → minimal Notifier → bare ChatView, **including the web streaming client**) → P1 errors/history/tests → P2 human fallback → P3 inbox/reconnect → P4 widget polish + i18n/theming → P5 hardening/1.0. Rate limiting and session-ownership checks land backend-side with P0, not in a later "safety" phase.
