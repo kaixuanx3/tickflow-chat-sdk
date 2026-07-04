@@ -21,26 +21,30 @@ http.StreamedResponse res(String body, [int status = 200]) =>
       headers: status == 429 ? const {'retry-after': '90'} : const {},
     );
 
-/// ChatView under a routed mock: GET (history) returns an empty thread,
-/// POST (one reply turn) is delegated to [onPost].
-Widget app(Future<http.StreamedResponse> Function(http.BaseRequest) onPost) =>
-    ProviderScope(
-      overrides: [
-        chatConfigProvider.overrideWithValue(
-          TickflowChatConfig(
-            apiBaseUrl: Uri.parse('https://api.test'),
-            tokenProvider: () async => 'jwt',
-            httpClientFactory: () => MockClient.streaming((req, _) async {
-              if (req.method == 'GET') return res('{"messages":[]}');
-              return onPost(req);
-            }),
-          ),
-        ),
-      ],
-      child: const MaterialApp(
-        home: Scaffold(body: ChatView(sessionId: 's1')),
+/// ChatView under a routed mock: GET (history) returns an empty thread
+/// unless [onGet] overrides it, POST (one reply turn) is delegated to
+/// [onPost]; [view] swaps in a ChatView with slot builders.
+Widget app(
+  Future<http.StreamedResponse> Function(http.BaseRequest) onPost, {
+  Future<http.StreamedResponse> Function()? onGet,
+  ChatView view = const ChatView(sessionId: 's1'),
+}) => ProviderScope(
+  overrides: [
+    chatConfigProvider.overrideWithValue(
+      TickflowChatConfig(
+        apiBaseUrl: Uri.parse('https://api.test'),
+        tokenProvider: () async => 'jwt',
+        httpClientFactory: () => MockClient.streaming((req, _) async {
+          if (req.method == 'GET') {
+            return onGet?.call() ?? res('{"messages":[]}');
+          }
+          return onPost(req);
+        }),
       ),
-    );
+    ),
+  ],
+  child: MaterialApp(home: Scaffold(body: view)),
+);
 
 Future<void> settle(WidgetTester tester) async {
   await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -192,6 +196,109 @@ void main() {
       );
       await body.close();
       await settle(tester);
+    });
+  });
+
+  testWidgets('messageBuilder replaces the default rows', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        app(
+          (_) async => res(sseBody),
+          view: ChatView(
+            sessionId: 's1',
+            messageBuilder: (context, m) => Text('CUSTOM:${m.content}'),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.enterText(find.byType(TextField), 'hello');
+      await tester.tap(find.byTooltip('Send'));
+      await settle(tester);
+
+      expect(find.text('CUSTOM:hello'), findsOneWidget);
+      expect(find.text('CUSTOM:Hi there!'), findsOneWidget);
+    });
+  });
+
+  testWidgets('composerBuilder replaces the composer and can send', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        app(
+          (_) async => res(sseBody),
+          view: ChatView(
+            sessionId: 's1',
+            composerBuilder: (context, details) => TextButton(
+              onPressed: details.busy
+                  ? null
+                  : () => details.onSubmit('from custom'),
+              child: const Text('GO'),
+            ),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.text('GO'));
+      await settle(tester);
+
+      expect(find.text('from custom'), findsOneWidget);
+      expect(find.text('Hi there!'), findsOneWidget);
+    });
+  });
+
+  testWidgets('empty and loading builders replace the default states', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final gate = Completer<http.StreamedResponse>();
+      await tester.pumpWidget(
+        app(
+          (_) async => res(sseBody),
+          onGet: () => gate.future,
+          view: ChatView(
+            sessionId: 's1',
+            loadingBuilder: (context) => const Text('LOADING…'),
+            emptyBuilder: (context) => const Text('NOTHING YET'),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('LOADING…'), findsOneWidget);
+
+      gate.complete(res('{"messages":[]}'));
+      await settle(tester);
+      expect(find.text('LOADING…'), findsNothing);
+      expect(find.text('NOTHING YET'), findsOneWidget);
+      expect(find.text('Ask about your account'), findsNothing);
+    });
+  });
+
+  testWidgets('escalatedBuilder replaces the follow-up notice', (tester) async {
+    await tester.runAsync(() async {
+      const escalatingSse =
+          'data: {"delta":"Handing over."}\n\n'
+          'event: done\ndata: {"done":true,"escalated":true}\n\n';
+      await tester.pumpWidget(
+        app(
+          (_) async => res(escalatingSse),
+          view: ChatView(
+            sessionId: 's1',
+            escalatedBuilder: (context) => const Text('HANDED OVER'),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.enterText(find.byType(TextField), 'help');
+      await tester.tap(find.byTooltip('Send'));
+      await settle(tester);
+
+      expect(find.text('HANDED OVER'), findsOneWidget);
+      expect(find.textContaining('by email'), findsNothing);
     });
   });
 }
