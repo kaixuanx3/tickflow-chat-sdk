@@ -17,6 +17,9 @@ class TickflowChatClient {
 
   Future<ChatSession> createSession() => _gateway.createSession();
 
+  /// The user's sessions, newest activity first — the inbox list.
+  Future<List<ChatSession>> listSessions() => _gateway.listSessions();
+
   ChatSessionEngine engineFor(ChatSession session) => ChatSessionEngine(
     session: session,
     transport: SseTransport(gateway: _gateway, sessionId: session.id),

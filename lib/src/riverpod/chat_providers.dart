@@ -65,3 +65,10 @@ final chatSessionProvider = NotifierProvider.autoDispose
     .family<ChatSessionNotifier, ChatSessionState, String>(
       ChatSessionNotifier.new,
     );
+
+/// The user's support threads for the inbox, newest activity first (the
+/// backend orders by `updatedAt`). Refresh with
+/// `ref.invalidate(chatInboxProvider)` — e.g. after returning from a thread.
+final chatInboxProvider = FutureProvider.autoDispose<List<ChatSession>>(
+  (ref) => ref.watch(chatClientProvider).listSessions(),
+);

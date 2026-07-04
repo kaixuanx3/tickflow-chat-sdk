@@ -68,4 +68,31 @@ void main() {
     await pumpEventQueue();
     container.dispose();
   });
+
+  test('chatInboxProvider lists the user sessions', () async {
+    final container = ProviderContainer(
+      overrides: [
+        chatConfigProvider.overrideWithValue(
+          TickflowChatConfig(
+            apiBaseUrl: Uri.parse('https://api.test'),
+            tokenProvider: () async => 'jwt',
+            httpClientFactory: () => MockClient(
+              (req) async => http.Response(
+                '{"sessions":['
+                '{"id":"s2","mode":"ai","status":"open","updatedAt":"2026-07-04T02:00:00.000Z"},'
+                '{"id":"s1","mode":"ai","status":"escalated"}'
+                ']}',
+                200,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final sessions = await container.read(chatInboxProvider.future);
+    expect(sessions, hasLength(2));
+    expect(sessions.first.id, 's2', reason: 'newest first, per server order');
+    expect(sessions[1].status, SessionStatus.escalated);
+  });
 }

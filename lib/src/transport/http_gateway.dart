@@ -43,6 +43,27 @@ class HttpGateway {
     return ChatSession.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   });
 
+  /// The user's sessions for the inbox, newest activity first (the server
+  /// orders by `updatedAt` desc), from `{"sessions": [...]}`.
+  Future<List<ChatSession>> listSessions() => _authed((jwt) async {
+    final res = await _guardNetwork(
+      () => _client
+          .get(
+            _config.apiBaseUrl.resolve('/chat/sessions'),
+            headers: _headers(jwt),
+          )
+          .timeout(_config.requestTimeout),
+    );
+    if (res.statusCode != 200) {
+      _throwForResponse(res.statusCode, res.body, res.headers);
+    }
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final sessions = json['sessions'] as List<dynamic>? ?? const [];
+    return sessions
+        .map((s) => ChatSession.fromJson(s as Map<String, dynamic>))
+        .toList(growable: false);
+  });
+
   /// Loads a session's persisted messages, oldest-first, from
   /// `{"messages": [...]}`. A 404 (not found, or not owned — the lookup is
   /// scoped server-side) surfaces as [ChatNotFoundException].
