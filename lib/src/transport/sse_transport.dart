@@ -30,14 +30,33 @@ class SseTransport implements ChatTransport {
       clientTag: clientTag,
     );
     await _active?.cancel();
+
+    // Whether this turn already produced a terminal event, so a clean close
+    // that arrives after one doesn't double-fail it.
+    var settled = false;
+    void emit(ChatStreamEvent event) {
+      if (event is StreamDone || event is StreamFailure) settled = true;
+      if (!_inbound.isClosed) _inbound.add(event);
+    }
+
     _active = events.listen(
-      _inbound.add,
+      emit,
       // A drop mid-reply becomes a typed inbound event; the engine keeps the
       // partial text and offers retry instead of seeing a stream error.
-      onError: (Object e) => _inbound.add(
+      onError: (Object e) => emit(
         StreamFailure(e is ChatException ? e.message : 'connection lost'),
       ),
-      onDone: () => _active = null,
+      // A clean close before the `done` frame (a truncated reply — server
+      // crash, dropped socket, proxy cut) is still a failure: surface it so
+      // the turn settles and offers retry instead of hanging mid-stream.
+      onDone: () {
+        if (!settled) {
+          emit(
+            const StreamFailure('connection closed before the reply finished'),
+          );
+        }
+        _active = null;
+      },
     );
   }
 
