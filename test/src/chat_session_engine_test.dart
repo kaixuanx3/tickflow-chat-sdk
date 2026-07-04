@@ -216,4 +216,56 @@ void main() {
     expect(engine.state.messages, isEmpty);
     expect(engine.state.error, isA<ChatNotFoundException>());
   });
+
+  test(
+    'retry re-sends a failed message under its original clientTag',
+    () async {
+      transport.throwOnSend = const ChatNetworkException('offline');
+      await engine.send('hello');
+      final tag = engine.state.messages.single.clientTag!;
+      expect(engine.state.messages.single.status, MessageStatus.failed);
+
+      transport.throwOnSend = null;
+      await engine.retry(tag);
+
+      expect(
+        transport.sent.single,
+        ('hello', tag),
+        reason: 'retry re-sends the same text under the original key',
+      );
+      expect(engine.state.messages.single.status, MessageStatus.sending);
+      expect(engine.state.error, isNull);
+    },
+  );
+
+  test('a successful retry streams and settles the reply', () async {
+    transport.throwOnSend = const ChatNetworkException('offline');
+    await engine.send('hi');
+    final tag = engine.state.messages.single.clientTag!;
+
+    transport.throwOnSend = null;
+    await engine.retry(tag);
+    await emit(const TokenDelta('Hello'));
+    await emit(const StreamDone(escalated: false));
+
+    expect(engine.state.messages[0].status, MessageStatus.sent);
+    expect(engine.state.messages[1].content, 'Hello');
+    expect(engine.state.messages[1].status, MessageStatus.sent);
+  });
+
+  test(
+    'retry ignores an unknown tag and a settled (non-failed) message',
+    () async {
+      await engine.retry('nope');
+      expect(transport.sent, isEmpty);
+
+      await engine.send('hi');
+      await emit(const TokenDelta('a'));
+      await emit(const StreamDone(escalated: false));
+      final tag = engine.state.messages[0].clientTag!;
+      transport.sent.clear();
+      await engine.retry(tag); // status is sent → no-op
+      expect(transport.sent, isEmpty);
+    },
+  );
 }
