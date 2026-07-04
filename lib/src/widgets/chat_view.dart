@@ -23,10 +23,58 @@ import 'tickflow_chat_theme.dart';
 /// settle (never per token); motion (entrance rise, typing dots, streaming
 /// caret) is disabled under [MediaQuery.disableAnimationsOf]; every tap
 /// target is at least 44px.
+/// Replaces the default row for one message (bubble, status caption, retry
+/// affordance). The default layout still renders every other message.
+typedef ChatMessageBuilder =
+    Widget Function(BuildContext context, ChatMessage message);
+
+/// Replaces the default composer; see [ChatComposerDetails] for what the
+/// thread hands a custom composer.
+typedef ChatComposerBuilder =
+    Widget Function(BuildContext context, ChatComposerDetails details);
+
+/// What a custom composer needs from the thread: whether a reply is in
+/// flight ([busy]), the rate-limit cooldown deadline ([retryAt], null when
+/// none is running), and [onSubmit] to run one optimistic send.
+@immutable
+class ChatComposerDetails {
+  const ChatComposerDetails({
+    required this.busy,
+    required this.retryAt,
+    required this.onSubmit,
+  });
+
+  final bool busy;
+  final DateTime? retryAt;
+  final ValueChanged<String> onSubmit;
+}
+
 class ChatView extends ConsumerStatefulWidget {
-  const ChatView({super.key, required this.sessionId});
+  const ChatView({
+    super.key,
+    required this.sessionId,
+    this.messageBuilder,
+    this.composerBuilder,
+    this.emptyBuilder,
+    this.loadingBuilder,
+    this.escalatedBuilder,
+  });
 
   final String sessionId;
+
+  /// Slot builders — each replaces one region of the default UI while the
+  /// rest keeps working (state wiring, retry, cooldowns, a11y).
+  final ChatMessageBuilder? messageBuilder;
+  final ChatComposerBuilder? composerBuilder;
+
+  /// Replaces the empty-thread state.
+  final WidgetBuilder? emptyBuilder;
+
+  /// Replaces the history-loading spinner.
+  final WidgetBuilder? loadingBuilder;
+
+  /// Replaces the escalated "we'll follow up by email" notice.
+  final WidgetBuilder? escalatedBuilder;
 
   @override
   ConsumerState<ChatView> createState() => _ChatViewState();
@@ -50,6 +98,11 @@ class _ChatViewState extends ConsumerState<ChatView> {
 
   void _retry(String clientTag) =>
       ref.read(chatSessionProvider(widget.sessionId).notifier).retry(clientTag);
+
+  /// One optimistic send, for custom composers (the default composer owns
+  /// its own controller and goes through [_send]).
+  void _submit(String text) =>
+      ref.read(chatSessionProvider(widget.sessionId).notifier).send(text);
 
   @override
   Widget build(BuildContext context) {
@@ -101,19 +154,30 @@ class _ChatViewState extends ConsumerState<ChatView> {
                 ),
               ),
             if (chat.session.status == SessionStatus.escalated)
-              _Banner(
-                icon: Icons.mark_email_read_outlined,
-                text: l10n.escalatedNotice,
-                foreground: t.muted,
-                background: t.surfaceVariant,
-                outline: t.outline,
+              widget.escalatedBuilder?.call(context) ??
+                  _Banner(
+                    icon: Icons.mark_email_read_outlined,
+                    text: l10n.escalatedNotice,
+                    foreground: t.muted,
+                    background: t.surfaceVariant,
+                    outline: t.outline,
+                  ),
+            if (widget.composerBuilder != null)
+              widget.composerBuilder!(
+                context,
+                ChatComposerDetails(
+                  busy: chat.isStreaming || showTyping,
+                  retryAt: chat.retryAt,
+                  onSubmit: _submit,
+                ),
+              )
+            else
+              _Composer(
+                controller: _controller,
+                busy: chat.isStreaming || showTyping,
+                retryAt: chat.retryAt,
+                onSend: _send,
               ),
-            _Composer(
-              controller: _controller,
-              busy: chat.isStreaming || showTyping,
-              retryAt: chat.retryAt,
-              onSend: _send,
-            ),
           ],
         ),
       ),
@@ -127,10 +191,12 @@ class _ChatViewState extends ConsumerState<ChatView> {
     TickflowChatLocalizations l10n,
   ) {
     if (chat.isLoading && chat.messages.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: t.brand));
+      return widget.loadingBuilder?.call(context) ??
+          Center(child: CircularProgressIndicator(color: t.brand));
     }
     if (chat.messages.isEmpty && !showTyping) {
-      return _EmptyState(theme: t, l10n: l10n);
+      return widget.emptyBuilder?.call(context) ??
+          _EmptyState(theme: t, l10n: l10n);
     }
     final count = chat.messages.length + (showTyping ? 1 : 0);
     return ListView.builder(
@@ -141,12 +207,13 @@ class _ChatViewState extends ConsumerState<ChatView> {
         if (showTyping && index == 0) return _TypingIndicator(theme: t);
         final i = showTyping ? index - 1 : index;
         final message = chat.messages[chat.messages.length - 1 - i];
-        return _MessageRow(
-          message: message,
-          theme: t,
-          l10n: l10n,
-          onRetry: _retry,
-        );
+        return widget.messageBuilder?.call(context, message) ??
+            _MessageRow(
+              message: message,
+              theme: t,
+              l10n: l10n,
+              onRetry: _retry,
+            );
       },
     );
   }
