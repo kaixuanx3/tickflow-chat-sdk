@@ -304,4 +304,37 @@ void main() {
 
     expect(authFailures, 0);
   });
+
+  test('escalate POSTs and returns the updated session', () async {
+    late http.Request seen;
+    final gateway = HttpGateway(
+      config(
+        client: MockClient((req) async {
+          seen = req;
+          return http.Response(
+            '{"id":"s1","mode":"ai","status":"escalated"}',
+            200,
+          );
+        }),
+      ),
+    );
+    final session = await gateway.escalate('s1');
+    expect(seen.method, 'POST');
+    expect(seen.url.path, '/chat/sessions/s1/escalate');
+    expect(session.status, SessionStatus.escalated);
+  });
+
+  test('escalate maps 404 to ChatNotFoundException', () async {
+    final gateway = HttpGateway(
+      config(
+        client: MockClient(
+          (req) async => http.Response('{"error":"session not found"}', 404),
+        ),
+      ),
+    );
+    await expectLater(
+      gateway.escalate('nope'),
+      throwsA(isA<ChatNotFoundException>()),
+    );
+  });
 }

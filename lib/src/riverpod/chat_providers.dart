@@ -56,6 +56,8 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
 
   Future<void> retry(String clientTag) => _engine.retry(clientTag);
 
+  Future<void> escalate() => _engine.escalate();
+
   void cancelInFlight() => _engine.cancelInFlight();
 }
 

@@ -303,4 +303,41 @@ void main() {
     await engine.send('again');
     expect(engine.state.retryAt, isNull);
   });
+
+  test('escalate flips the session to the server-returned state', () async {
+    const escalated = ChatSession(
+      id: 's1',
+      mode: SessionMode.ai,
+      status: SessionStatus.escalated,
+    );
+    final e = ChatSessionEngine(
+      session: session,
+      transport: FakeTransport(),
+      escalate: () async => escalated,
+    );
+    addTearDown(e.dispose);
+    await e.escalate();
+    expect(e.state.session.status, SessionStatus.escalated);
+  });
+
+  test(
+    'a failed escalate surfaces on state.error, session unchanged',
+    () async {
+      final e = ChatSessionEngine(
+        session: session,
+        transport: FakeTransport(),
+        escalate: () async => throw const ChatNotFoundException('gone'),
+      );
+      addTearDown(e.dispose);
+      await e.escalate();
+      expect(e.state.session.status, SessionStatus.open);
+      expect(e.state.error, isA<ChatNotFoundException>());
+    },
+  );
+
+  test('escalate is a no-op when the engine has no escalate wired', () async {
+    await engine.escalate(); // setUp engine has no escalate callback
+    expect(engine.state.session.status, SessionStatus.open);
+    expect(engine.state.error, isNull);
+  });
 }
