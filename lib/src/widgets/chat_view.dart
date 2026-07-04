@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
 import '../models/chat_role.dart';
 import '../riverpod/chat_providers.dart';
+import 'tickflow_chat_localizations.dart';
 import 'tickflow_chat_theme.dart';
 
 /// Barebones default chat screen: message list, error line, composer.
@@ -125,6 +126,7 @@ class _Composer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = TickflowChatLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 8, 8),
       child: Row(
@@ -133,12 +135,12 @@ class _Composer extends StatelessWidget {
             child: TextField(
               controller: controller,
               onSubmitted: enabled ? (_) => onSend() : null,
-              decoration: const InputDecoration(
-                hintText: 'Message',
-                border: OutlineInputBorder(
+              decoration: InputDecoration(
+                hintText: l10n.composerHint,
+                border: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(22)),
                 ),
-                contentPadding: EdgeInsets.symmetric(
+                contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
                 ),
@@ -147,7 +149,7 @@ class _Composer extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           IconButton.filled(
-            tooltip: 'Send',
+            tooltip: l10n.sendButtonLabel,
             onPressed: enabled ? onSend : null,
             icon: const Icon(Icons.send),
           ),
