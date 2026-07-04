@@ -361,4 +361,29 @@ void main() {
     expect(engine.state.session.status, SessionStatus.open);
     expect(engine.state.error, isNull);
   });
+
+  test('awaiting-reply spans send until the first token', () async {
+    await engine.send('hi');
+    expect(engine.state.isAwaitingReply, isTrue);
+    await emit(const TokenDelta('a'));
+    expect(engine.state.isAwaitingReply, isFalse);
+    expect(engine.state.isStreaming, isTrue);
+  });
+
+  test('awaiting-reply clears on failure and on a tokenless done', () async {
+    await engine.send('hi');
+    await emit(const StreamFailure('reset'));
+    expect(engine.state.isAwaitingReply, isFalse);
+
+    await engine.retry(engine.state.messages.single.clientTag!);
+    expect(engine.state.isAwaitingReply, isTrue);
+    await emit(const StreamDone(escalated: false));
+    expect(engine.state.isAwaitingReply, isFalse);
+  });
+
+  test('awaiting-reply clears when the dispatch itself fails', () async {
+    transport.throwOnSend = const ChatNetworkException('offline');
+    await engine.send('hi');
+    expect(engine.state.isAwaitingReply, isFalse);
+  });
 }
