@@ -14,6 +14,7 @@ class TickflowChatConfig {
     required this.tokenProvider,
     this.requestTimeout = const Duration(seconds: 30),
     this.httpClientFactory,
+    this.onAuthFailure,
   });
 
   /// Backend origin, e.g. `Uri.parse('https://api.tickflow.app')`.
@@ -28,4 +29,10 @@ class TickflowChatConfig {
   /// Test seam / platform override. Defaults to a platform-appropriate
   /// client (a streaming fetch-based client on web).
   final http.Client Function()? httpClientFactory;
+
+  /// Invoked once when a request terminally fails authentication — no token,
+  /// or the backend rejected the token twice (Tickflow has no refresh). The
+  /// host routes to login here (e.g. fires its session-expired provider). The
+  /// same `ChatAuthException` also surfaces on the session state's error.
+  final void Function()? onAuthFailure;
 }

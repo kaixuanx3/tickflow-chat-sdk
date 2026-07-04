@@ -13,6 +13,7 @@ import '../models/chat_session.dart';
 ///   chatConfigProvider.overrideWithValue(TickflowChatConfig(
 ///     apiBaseUrl: Uri.parse(Env.apiUrl),
 ///     tokenProvider: tokenStorage.readToken,
+///     onAuthFailure: onSessionExpired, // host routes to login on a dead token
 ///   )),
 /// ], child: ...)
 /// ```
