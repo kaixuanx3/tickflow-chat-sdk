@@ -71,8 +71,33 @@ class ChatSessionEngine {
       ),
     );
 
+    await _dispatch(trimmed, tag);
+  }
+
+  /// Re-sends a failed message under its original [clientTag] — the server's
+  /// idempotency key, so a retry never duplicates. No-op unless a message with
+  /// that tag is currently `failed` and nothing else is in flight.
+  Future<void> retry(String clientTag) async {
+    if (_state.isStreaming || _pendingTag != null) return;
+    final i = _indexOfTag(clientTag);
+    if (i == null || _state.messages[i].status != MessageStatus.failed) return;
+
+    _pendingTag = clientTag;
+    final text = _state.messages[i].content;
+    _emit(
+      _state.copyWith(
+        messages: _withStatus(clientTag, MessageStatus.sending),
+        clearError: true,
+      ),
+    );
+    await _dispatch(text, clientTag);
+  }
+
+  /// Hands one turn to the transport; an initiation failure marks the echo
+  /// `failed` (retryable) and surfaces a typed error.
+  Future<void> _dispatch(String text, String tag) async {
     try {
-      await _transport.send(trimmed, clientTag: tag);
+      await _transport.send(text, clientTag: tag);
     } on Exception catch (e) {
       final error = e is ChatException
           ? e

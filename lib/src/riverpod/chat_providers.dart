@@ -53,6 +53,8 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
 
   Future<void> send(String text) => _engine.send(text);
 
+  Future<void> retry(String clientTag) => _engine.retry(clientTag);
+
   void cancelInFlight() => _engine.cancelInFlight();
 }
 
