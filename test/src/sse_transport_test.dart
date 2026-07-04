@@ -103,4 +103,29 @@ void main() {
       await t.close();
     },
   );
+
+  test('a clean close before the done frame surfaces as a failure', () async {
+    final controller = StreamController<List<int>>();
+    final t = transport(
+      MockClient.streaming(
+        (req, _) async => http.StreamedResponse(controller.stream, 200),
+      ),
+    );
+    final collected = <ChatStreamEvent>[];
+    t.inbound.listen(collected.add);
+
+    await t.send('hello', clientTag: 'tag-1');
+    controller.add(utf8.encode('data: {"delta":"par"}\n\n'));
+    await pumpEventQueue();
+    await controller.close(); // stream ends cleanly — no done frame
+    await pumpEventQueue();
+
+    expect((collected[0] as TokenDelta).delta, 'par');
+    expect(
+      collected[1],
+      isA<StreamFailure>(),
+      reason: 'a truncated reply must settle, not hang',
+    );
+    await t.close();
+  });
 }
