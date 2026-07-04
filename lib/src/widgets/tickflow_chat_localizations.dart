@@ -72,6 +72,20 @@ abstract class TickflowChatLocalizations {
 
   /// Small-print reminder that answers are AI-generated.
   String get aiDisclaimer;
+
+  /// Inbox greeting card.
+  String get greetTitle;
+  String get greetSubtitle;
+
+  /// The greeting card's start-a-conversation CTA.
+  String get askAssistant;
+  String get repliesInstantly;
+
+  /// Inbox section header above the thread list.
+  String get recentConversations;
+
+  /// Generic retry action (inbox load failure and the like).
+  String get retryLabel;
 }
 
 class TickflowChatLocalizationsEn extends TickflowChatLocalizations {
@@ -109,6 +123,19 @@ class TickflowChatLocalizationsEn extends TickflowChatLocalizations {
       'resolved.';
   @override
   String get aiDisclaimer => 'Answers are AI-generated and may be inaccurate.';
+  @override
+  String get greetTitle => 'How can we help?';
+  @override
+  String get greetSubtitle =>
+      'Ask our assistant anything — most issues are solved in a minute.';
+  @override
+  String get askAssistant => 'Ask Tickflow Assistant';
+  @override
+  String get repliesInstantly => 'AI · replies instantly';
+  @override
+  String get recentConversations => 'Recent conversations';
+  @override
+  String get retryLabel => 'Retry';
 }
 
 class TickflowChatLocalizationsZh extends TickflowChatLocalizations {
@@ -142,6 +169,18 @@ class TickflowChatLocalizationsZh extends TickflowChatLocalizations {
   String get escalatedNotice => '您已进入队列。解决后我们将在此并通过邮件与您联系。';
   @override
   String get aiDisclaimer => '回答由 AI 生成，可能不准确。';
+  @override
+  String get greetTitle => '需要什么帮助？';
+  @override
+  String get greetSubtitle => '向助手咨询任何问题——大多数问题一分钟内即可解决。';
+  @override
+  String get askAssistant => '咨询 Tickflow 助手';
+  @override
+  String get repliesInstantly => 'AI · 即时回复';
+  @override
+  String get recentConversations => '最近的对话';
+  @override
+  String get retryLabel => '重试';
 }
 
 class _TickflowChatLocalizationsDelegate

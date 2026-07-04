@@ -79,7 +79,13 @@ final chatSessionProvider = NotifierProvider.autoDispose
 /// The user's support threads for the inbox, newest activity first (the
 /// backend orders by `updatedAt`). Refresh with
 /// `ref.invalidate(chatInboxProvider)` — e.g. after returning from a thread.
+///
+/// Riverpod 3's automatic retry is disabled: while it retries, the state
+/// reads as loading, which would pin the inbox on a spinner (and hammer the
+/// backend) instead of surfacing the typed error. Recovery is explicit —
+/// the retry button and pull-to-refresh.
 final chatInboxProvider = FutureProvider.autoDispose<List<ChatSession>>(
+  retry: (retryCount, error) => null,
   (ref) => ref.watch(chatClientProvider).listSessions(),
 );
 
