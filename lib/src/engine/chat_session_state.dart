@@ -12,6 +12,7 @@ class ChatSessionState {
     required this.session,
     this.messages = const [],
     this.isLoading = false,
+    this.isAwaitingReply = false,
     this.isStreaming = false,
     this.error,
     this.retryAt,
@@ -24,6 +25,10 @@ class ChatSessionState {
 
   /// True while history is being hydrated on resume.
   final bool isLoading;
+
+  /// True from a dispatched send until the reply's first token (or its
+  /// failure) — the window the typing indicator covers.
+  final bool isAwaitingReply;
 
   /// True while an AI reply is mid-stream.
   final bool isStreaming;
@@ -42,6 +47,7 @@ class ChatSessionState {
     ChatSession? session,
     List<ChatMessage>? messages,
     bool? isLoading,
+    bool? isAwaitingReply,
     bool? isStreaming,
     ChatException? error,
     bool clearError = false,
@@ -51,6 +57,7 @@ class ChatSessionState {
     session: session ?? this.session,
     messages: messages ?? this.messages,
     isLoading: isLoading ?? this.isLoading,
+    isAwaitingReply: isAwaitingReply ?? this.isAwaitingReply,
     isStreaming: isStreaming ?? this.isStreaming,
     error: clearError ? null : (error ?? this.error),
     retryAt: clearRetryAt ? null : (retryAt ?? this.retryAt),

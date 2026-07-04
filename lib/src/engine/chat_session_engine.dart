@@ -70,6 +70,7 @@ class ChatSessionEngine {
             clientTag: tag,
           ),
         ],
+        isAwaitingReply: true,
         clearError: true,
         clearRetryAt: true,
       ),
@@ -91,6 +92,7 @@ class ChatSessionEngine {
     _emit(
       _state.copyWith(
         messages: _withStatus(clientTag, MessageStatus.sending),
+        isAwaitingReply: true,
         clearError: true,
         clearRetryAt: true,
       ),
@@ -117,6 +119,7 @@ class ChatSessionEngine {
       _emit(
         _state.copyWith(
           messages: _withStatus(tag, MessageStatus.failed),
+          isAwaitingReply: false,
           error: error,
           retryAt: retryAt,
         ),
@@ -218,7 +221,13 @@ class ChatSessionEngine {
         ),
       );
       _streamingIndex = messages.length - 1;
-      _emit(_state.copyWith(messages: messages, isStreaming: true));
+      _emit(
+        _state.copyWith(
+          messages: messages,
+          isAwaitingReply: false,
+          isStreaming: true,
+        ),
+      );
       return;
     }
     final i = _streamingIndex!;
@@ -250,6 +259,7 @@ class ChatSessionEngine {
     _emit(
       _state.copyWith(
         messages: messages,
+        isAwaitingReply: false,
         isStreaming: false,
         error: ChatStreamException(message, partialText: partial),
       ),
@@ -267,7 +277,13 @@ class ChatSessionEngine {
     }
     _pendingTag = null;
     _streamingIndex = null;
-    _emit(_state.copyWith(messages: messages, isStreaming: false));
+    _emit(
+      _state.copyWith(
+        messages: messages,
+        isAwaitingReply: false,
+        isStreaming: false,
+      ),
+    );
   }
 
   int? _indexOfTag(String tag) {
