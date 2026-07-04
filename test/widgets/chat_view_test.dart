@@ -19,10 +19,16 @@ Widget app() => ProviderScope(
       TickflowChatConfig(
         apiBaseUrl: Uri.parse('https://api.test'),
         tokenProvider: () async => 'jwt',
-        httpClientFactory: () => MockClient.streaming(
-          (req, _) async =>
-              http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200),
-        ),
+        httpClientFactory: () => MockClient.streaming((req, _) async {
+          // the notifier hydrates history on build
+          if (req.method == 'GET') {
+            return http.StreamedResponse(
+              Stream.value(utf8.encode('{"messages":[]}')),
+              200,
+            );
+          }
+          return http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200);
+        }),
       ),
     ),
   ],

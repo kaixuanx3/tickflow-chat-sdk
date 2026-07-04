@@ -126,17 +126,26 @@ class ChatSessionEngine {
 
   /// Hydrates this session's history on resume. Flips
   /// [ChatSessionState.isLoading] while [fetchHistory] runs, then replaces
-  /// [ChatSessionState.messages] with the server's copy. A failure surfaces
-  /// as [ChatSessionState.error] — never thrown — so the UI can offer retry,
-  /// mirroring how send failures are reported. Meant to run once, before any
-  /// send.
+  /// [ChatSessionState.messages] with the server's copy. Never throws — any
+  /// failure surfaces as [ChatSessionState.error] (so it is safe to run
+  /// unawaited), and the UI can offer retry, mirroring how send failures are
+  /// reported.
   Future<void> load(Future<List<ChatMessage>> Function() fetchHistory) async {
     _emit(_state.copyWith(isLoading: true, clearError: true));
     try {
       final history = await fetchHistory();
+      // A turn begun while history was in flight wins — applying the stale
+      // snapshot would wipe the optimistic echo / streaming reply.
+      if (_pendingTag != null || _streamingIndex != null) {
+        _emit(_state.copyWith(isLoading: false));
+        return;
+      }
       _emit(_state.copyWith(messages: history, isLoading: false));
-    } on ChatException catch (e) {
-      _emit(_state.copyWith(isLoading: false, error: e));
+    } on Exception catch (e) {
+      final error = e is ChatException
+          ? e
+          : ChatApiException(null, e.toString());
+      _emit(_state.copyWith(isLoading: false, error: error));
     }
   }
 
