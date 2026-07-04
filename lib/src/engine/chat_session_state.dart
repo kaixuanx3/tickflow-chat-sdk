@@ -14,6 +14,7 @@ class ChatSessionState {
     this.isLoading = false,
     this.isStreaming = false,
     this.error,
+    this.retryAt,
   });
 
   final ChatSession session;
@@ -31,6 +32,12 @@ class ChatSessionState {
   /// next send.
   final ChatException? error;
 
+  /// When rate-limited (a 429 carrying a Retry-After), the UTC instant the
+  /// composer may send again — null otherwise. The widget derives the
+  /// countdown and re-enables once it passes; a value already in the past
+  /// means no active cooldown. Cleared on the next send.
+  final DateTime? retryAt;
+
   ChatSessionState copyWith({
     ChatSession? session,
     List<ChatMessage>? messages,
@@ -38,11 +45,14 @@ class ChatSessionState {
     bool? isStreaming,
     ChatException? error,
     bool clearError = false,
+    DateTime? retryAt,
+    bool clearRetryAt = false,
   }) => ChatSessionState(
     session: session ?? this.session,
     messages: messages ?? this.messages,
     isLoading: isLoading ?? this.isLoading,
     isStreaming: isStreaming ?? this.isStreaming,
     error: clearError ? null : (error ?? this.error),
+    retryAt: clearRetryAt ? null : (retryAt ?? this.retryAt),
   );
 }

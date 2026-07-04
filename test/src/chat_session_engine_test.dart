@@ -268,4 +268,39 @@ void main() {
       expect(transport.sent, isEmpty);
     },
   );
+
+  test('a 429 records an absolute retryAt for the composer cooldown', () async {
+    final before = DateTime.now().toUtc();
+    transport.throwOnSend = const ChatRateLimitException(
+      'daily cap',
+      retryAfter: Duration(seconds: 30),
+    );
+    await engine.send('hi');
+
+    expect(engine.state.error, isA<ChatRateLimitException>());
+    final retryAt = engine.state.retryAt;
+    expect(retryAt, isNotNull);
+    expect(retryAt!.isAfter(before.add(const Duration(seconds: 29))), isTrue);
+    expect(retryAt.isBefore(before.add(const Duration(seconds: 32))), isTrue);
+  });
+
+  test('a 429 without a Retry-After leaves retryAt null', () async {
+    transport.throwOnSend = const ChatRateLimitException('cap');
+    await engine.send('hi');
+    expect(engine.state.error, isA<ChatRateLimitException>());
+    expect(engine.state.retryAt, isNull);
+  });
+
+  test('the next send clears the rate-limit cooldown', () async {
+    transport.throwOnSend = const ChatRateLimitException(
+      'cap',
+      retryAfter: Duration(seconds: 30),
+    );
+    await engine.send('hi');
+    expect(engine.state.retryAt, isNotNull);
+
+    transport.throwOnSend = null;
+    await engine.send('again');
+    expect(engine.state.retryAt, isNull);
+  });
 }
