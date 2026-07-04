@@ -74,6 +74,18 @@ void main() {
     expect(esc.status, SessionStatus.escalated);
   });
 
+  test('ChatSession parses updatedAt (UTC) and copyWith preserves it', () {
+    final s = ChatSession.fromJson(const {
+      'id': 's1',
+      'mode': 'ai',
+      'status': 'open',
+      'updatedAt': '2026-07-04T10:00:00+08:00',
+    });
+    expect(s.updatedAt, DateTime.utc(2026, 7, 4, 2));
+    expect(s.copyWith(status: SessionStatus.escalated).updatedAt, s.updatedAt);
+    expect(ChatSession.stub('x').updatedAt, isNull);
+  });
+
   test('exceptions carry their designed recovery data', () {
     const rate = ChatRateLimitException(
       'daily cap',

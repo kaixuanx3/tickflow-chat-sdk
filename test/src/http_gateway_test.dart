@@ -326,6 +326,31 @@ void main() {
     expect(session.status, SessionStatus.escalated);
   });
 
+  test('listSessions GETs the inbox and parses the envelope', () async {
+    late http.Request seen;
+    final gateway = HttpGateway(
+      config(
+        client: MockClient((req) async {
+          seen = req;
+          return http.Response(
+            '{"sessions":['
+            '{"id":"s2","mode":"ai","status":"open","updatedAt":"2026-07-04T02:00:00.000Z"},'
+            '{"id":"s1","mode":"ai","status":"escalated","updatedAt":"2026-07-03T02:00:00.000Z"}'
+            ']}',
+            200,
+          );
+        }),
+      ),
+    );
+    final sessions = await gateway.listSessions();
+    expect(seen.method, 'GET');
+    expect(seen.url.path, '/chat/sessions');
+    expect(sessions, hasLength(2));
+    expect(sessions.first.id, 's2', reason: 'server returns newest first');
+    expect(sessions.first.updatedAt, DateTime.utc(2026, 7, 4, 2));
+    expect(sessions[1].status, SessionStatus.escalated);
+  });
+
   test('escalate maps 404 to ChatNotFoundException', () async {
     final gateway = HttpGateway(
       config(
