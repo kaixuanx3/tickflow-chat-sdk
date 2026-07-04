@@ -56,6 +56,7 @@ void main() {
     final session = await gateway.createSession();
     expect(seen.url.path, '/chat/sessions');
     expect(seen.headers['Authorization'], 'Bearer jwt-1');
+    expect(seen.body, '{}', reason: 'empty object, not a bare empty body');
     expect(session.id, 's1');
     expect(session.mode, SessionMode.ai);
   });
@@ -321,6 +322,7 @@ void main() {
     final session = await gateway.escalate('s1');
     expect(seen.method, 'POST');
     expect(seen.url.path, '/chat/sessions/s1/escalate');
+    expect(seen.body, '{}');
     expect(session.status, SessionStatus.escalated);
   });
 
