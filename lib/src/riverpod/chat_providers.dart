@@ -43,7 +43,9 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
   @override
   ChatSessionState build() {
     final client = ref.watch(chatClientProvider);
-    _engine = client.engineFor(ChatSession.stub(sessionId));
+    // Resume, not just attach: history hydrates in the background
+    // (state.isLoading) while the engine is immediately usable for sending.
+    _engine = client.resumeSession(ChatSession.stub(sessionId));
     final sub = _engine.changes.listen((s) => state = s);
     ref.onDispose(() {
       sub.cancel();

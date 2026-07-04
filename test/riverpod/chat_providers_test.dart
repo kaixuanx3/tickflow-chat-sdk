@@ -14,10 +14,16 @@ const sseBody =
 TickflowChatConfig testConfig() => TickflowChatConfig(
   apiBaseUrl: Uri.parse('https://api.test'),
   tokenProvider: () async => 'jwt',
-  httpClientFactory: () => MockClient.streaming(
-    (req, _) async =>
-        http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200),
-  ),
+  httpClientFactory: () => MockClient.streaming((req, _) async {
+    // the notifier hydrates history on build
+    if (req.method == 'GET') {
+      return http.StreamedResponse(
+        Stream.value(utf8.encode('{"messages":[]}')),
+        200,
+      );
+    }
+    return http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200);
+  }),
 );
 
 void main() {
@@ -94,5 +100,33 @@ void main() {
     expect(sessions, hasLength(2));
     expect(sessions.first.id, 's2', reason: 'newest first, per server order');
     expect(sessions[1].status, SessionStatus.escalated);
+  });
+
+  test('build hydrates existing history into state', () async {
+    const historyJson =
+        '{"messages":[{"id":"m1","sessionId":"s1","role":"assistant",'
+        '"content":"earlier answer","createdAt":"2026-07-01T10:00:00.000Z"}]}';
+    final container = ProviderContainer(
+      overrides: [
+        chatConfigProvider.overrideWithValue(
+          TickflowChatConfig(
+            apiBaseUrl: Uri.parse('https://api.test'),
+            tokenProvider: () async => 'jwt',
+            httpClientFactory: () =>
+                MockClient((req) async => http.Response(historyJson, 200)),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final sub = container.listen(chatSessionProvider('s1'), (_, _) {});
+    addTearDown(sub.close);
+
+    expect(container.read(chatSessionProvider('s1')).isLoading, isTrue);
+    await pumpEventQueue();
+
+    final state = container.read(chatSessionProvider('s1'));
+    expect(state.isLoading, isFalse);
+    expect(state.messages.single.content, 'earlier answer');
   });
 }

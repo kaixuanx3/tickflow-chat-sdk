@@ -217,6 +217,27 @@ void main() {
     expect(engine.state.error, isA<ChatNotFoundException>());
   });
 
+  test('load maps an unexpected error type onto state.error', () async {
+    await engine.load(() async => throw const FormatException('bad body'));
+    expect(engine.state.isLoading, isFalse);
+    expect(engine.state.error, isA<ChatApiException>());
+  });
+
+  test('history arriving after a send began does not wipe the echo', () async {
+    final gate = Completer<List<ChatMessage>>();
+    final loading = engine.load(() => gate.future);
+    await engine.send('hi');
+    gate.complete([hist('m1', ChatRole.user, 'old question')]);
+    await loading;
+
+    expect(engine.state.isLoading, isFalse);
+    expect(
+      engine.state.messages.single.content,
+      'hi',
+      reason: 'stale history must not replace the in-flight turn',
+    );
+  });
+
   test(
     'retry re-sends a failed message under its original clientTag',
     () async {
