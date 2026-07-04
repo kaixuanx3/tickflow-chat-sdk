@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../client/chat_client.dart';
+import '../client/chat_read_marks.dart';
 import '../config/chat_config.dart';
 import '../engine/chat_session_engine.dart';
 import '../engine/chat_session_state.dart';
@@ -47,9 +50,14 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
     // (state.isLoading) while the engine is immediately usable for sending.
     _engine = client.resumeSession(ChatSession.stub(sessionId));
     final sub = _engine.changes.listen((s) => state = s);
+    // Opening and leaving the thread both clear its unread badge — the
+    // dispose mark covers replies that arrived while the user was reading.
+    final marks = ref.watch(chatReadMarksProvider);
+    unawaited(marks.markRead(sessionId, DateTime.now()));
     ref.onDispose(() {
       sub.cancel();
       _engine.dispose();
+      unawaited(marks.markRead(sessionId, DateTime.now()));
     });
     return _engine.state;
   }
@@ -74,3 +82,24 @@ final chatSessionProvider = NotifierProvider.autoDispose
 final chatInboxProvider = FutureProvider.autoDispose<List<ChatSession>>(
   (ref) => ref.watch(chatClientProvider).listSessions(),
 );
+
+/// Where per-session read marks live. Defaults to process-lifetime memory;
+/// hosts override with a persistent store so unread badges survive
+/// restarts:
+///
+/// ```dart
+/// chatReadMarksProvider.overrideWithValue(MyPrefsBackedReadMarks(prefs))
+/// ```
+final chatReadMarksProvider = Provider<ChatReadMarks>(
+  (ref) => InMemoryChatReadMarks(),
+);
+
+/// True when [session] has activity newer than its local read mark. Marks
+/// are compared against the server's `updatedAt`; sessions without one
+/// never badge.
+bool chatSessionIsUnread(ChatReadMarks marks, ChatSession session) {
+  final updatedAt = session.updatedAt;
+  if (updatedAt == null) return false;
+  final readAt = marks.lastReadAt(session.id);
+  return readAt == null || updatedAt.isAfter(readAt);
+}
