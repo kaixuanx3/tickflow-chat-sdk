@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
 import '../models/chat_role.dart';
 import '../riverpod/chat_providers.dart';
+import 'tickflow_chat_theme.dart';
 
 /// Barebones default chat screen: message list, error line, composer.
 ///
@@ -57,7 +58,7 @@ class _ChatViewState extends ConsumerState<ChatView> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
                 chat.error!.message,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: TickflowChatTheme.of(context).danger),
               ),
             ),
           _Composer(
@@ -78,7 +79,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final t = TickflowChatTheme.of(context);
     final isUser = message.role == ChatRole.user;
     final failed = message.status == MessageStatus.failed;
 
@@ -89,13 +90,22 @@ class _MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
-          color: isUser ? scheme.primary : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: failed ? Border.all(color: scheme.error) : null,
+          // A failed send drops to a bordered neutral fill so the state
+          // reads without relying on color alone (the border + retry
+          // affordance carry it; retry UI lands with the full P4 build).
+          color: failed
+              ? t.surfaceVariant
+              : (isUser ? t.userBubble : t.assistantBubble),
+          borderRadius: isUser ? t.userBubbleRadius : t.assistantBubbleRadius,
+          border: failed
+              ? Border.all(color: t.danger)
+              : (isUser ? null : Border.all(color: t.outline)),
         ),
         child: Text(
           message.content,
-          style: TextStyle(color: isUser ? scheme.onPrimary : scheme.onSurface),
+          style: TextStyle(
+            color: failed || !isUser ? t.foreground : t.onUserBubble,
+          ),
         ),
       ),
     );
