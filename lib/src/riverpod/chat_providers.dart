@@ -58,5 +58,5 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
 
 final chatSessionProvider = NotifierProvider.autoDispose
     .family<ChatSessionNotifier, ChatSessionState, String>(
-  ChatSessionNotifier.new,
-);
+      ChatSessionNotifier.new,
+    );

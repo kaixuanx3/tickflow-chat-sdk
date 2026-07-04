@@ -8,12 +8,12 @@ enum ChatRole {
   unknown;
 
   static ChatRole fromWire(String s) => switch (s) {
-        'user' => user,
-        'assistant' => assistant,
-        'agent' => agent,
-        'system' => system,
-        _ => unknown,
-      };
+    'user' => user,
+    'assistant' => assistant,
+    'agent' => agent,
+    'system' => system,
+    _ => unknown,
+  };
 }
 
 enum SessionMode {
@@ -22,10 +22,10 @@ enum SessionMode {
   unknown;
 
   static SessionMode fromWire(String s) => switch (s) {
-        'ai' => ai,
-        'human' => human,
-        _ => unknown,
-      };
+    'ai' => ai,
+    'human' => human,
+    _ => unknown,
+  };
 }
 
 enum SessionStatus {
@@ -35,11 +35,11 @@ enum SessionStatus {
   unknown;
 
   static SessionStatus fromWire(String s) => switch (s) {
-        'open' => open,
-        'escalated' => escalated,
-        'closed' => closed,
-        _ => unknown,
-      };
+    'open' => open,
+    'escalated' => escalated,
+    'closed' => closed,
+    _ => unknown,
+  };
 }
 
 /// Client-only send/stream lifecycle of a message; never serialized outbound.

@@ -38,12 +38,11 @@ class ChatSessionState {
     bool? isStreaming,
     ChatException? error,
     bool clearError = false,
-  }) =>
-      ChatSessionState(
-        session: session ?? this.session,
-        messages: messages ?? this.messages,
-        isLoading: isLoading ?? this.isLoading,
-        isStreaming: isStreaming ?? this.isStreaming,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => ChatSessionState(
+    session: session ?? this.session,
+    messages: messages ?? this.messages,
+    isLoading: isLoading ?? this.isLoading,
+    isStreaming: isStreaming ?? this.isStreaming,
+    error: clearError ? null : (error ?? this.error),
+  );
 }

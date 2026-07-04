@@ -20,32 +20,41 @@ class _Unauthorized implements Exception {
 /// [ChatException]; the raw token lives only on the stack for one call.
 class HttpGateway {
   HttpGateway(this._config)
-      : _client = (_config.httpClientFactory ?? createPlatformHttpClient)();
+    : _client = (_config.httpClientFactory ?? createPlatformHttpClient)();
 
   final TickflowChatConfig _config;
   final http.Client _client;
 
   Future<ChatSession> createSession() => _authed((jwt) async {
-        final res = await _guardNetwork(() => _client
-            .post(_config.apiBaseUrl.resolve('/chat/sessions'), headers: _headers(jwt))
-            .timeout(_config.requestTimeout));
-        if (res.statusCode != 200 && res.statusCode != 201) {
-          _throwForResponse(res.statusCode, res.body, res.headers);
-        }
-        return ChatSession.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
-      });
+    final res = await _guardNetwork(
+      () => _client
+          .post(
+            _config.apiBaseUrl.resolve('/chat/sessions'),
+            headers: _headers(jwt),
+          )
+          .timeout(_config.requestTimeout),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      _throwForResponse(res.statusCode, res.body, res.headers);
+    }
+    return ChatSession.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  });
 
   /// Loads a session's persisted messages, oldest-first, from
   /// `{"messages": [...]}`. A 404 (not found, or not owned — the lookup is
   /// scoped server-side) surfaces as [ChatNotFoundException].
-  Future<List<ChatMessage>> fetchHistory(String sessionId) => _authed((jwt) async {
-        final res = await _guardNetwork(() => _client
-            .get(
-              _config.apiBaseUrl
-                  .resolve('/chat/sessions/${Uri.encodeComponent(sessionId)}/messages'),
-              headers: _headers(jwt),
-            )
-            .timeout(_config.requestTimeout));
+  Future<List<ChatMessage>> fetchHistory(String sessionId) =>
+      _authed((jwt) async {
+        final res = await _guardNetwork(
+          () => _client
+              .get(
+                _config.apiBaseUrl.resolve(
+                  '/chat/sessions/${Uri.encodeComponent(sessionId)}/messages',
+                ),
+                headers: _headers(jwt),
+              )
+              .timeout(_config.requestTimeout),
+        );
         if (res.statusCode != 200) {
           _throwForResponse(res.statusCode, res.body, res.headers);
         }
@@ -64,32 +73,32 @@ class HttpGateway {
     required String sessionId,
     required String text,
     required String clientTag,
-  }) =>
-      _authed((jwt) async {
-        final req =
-            http.Request('POST', _config.apiBaseUrl.resolve('/chat/messages'))
-              ..headers.addAll(_headers(jwt))
-              ..headers['Accept'] = 'text/event-stream'
-              ..body = jsonEncode({
-                'sessionId': sessionId,
-                'text': text,
-                'clientTag': clientTag,
-              });
-        final res = await _guardNetwork(
-            () => _client.send(req).timeout(_config.requestTimeout));
-        if (res.statusCode != 200) {
-          final body = await res.stream.bytesToString();
-          _throwForResponse(res.statusCode, body, res.headers);
-        }
-        return parseSseBytes(res.stream);
-      });
+  }) => _authed((jwt) async {
+    final req =
+        http.Request('POST', _config.apiBaseUrl.resolve('/chat/messages'))
+          ..headers.addAll(_headers(jwt))
+          ..headers['Accept'] = 'text/event-stream'
+          ..body = jsonEncode({
+            'sessionId': sessionId,
+            'text': text,
+            'clientTag': clientTag,
+          });
+    final res = await _guardNetwork(
+      () => _client.send(req).timeout(_config.requestTimeout),
+    );
+    if (res.statusCode != 200) {
+      final body = await res.stream.bytesToString();
+      _throwForResponse(res.statusCode, body, res.headers);
+    }
+    return parseSseBytes(res.stream);
+  });
 
   void dispose() => _client.close();
 
   Map<String, String> _headers(String jwt) => {
-        'Authorization': 'Bearer $jwt',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $jwt',
+    'Content-Type': 'application/json',
+  };
 
   /// Token per request; on 401 ask the provider once more (the host may have
   /// re-logged-in) and retry. Still unauthorized → [ChatAuthException] for
@@ -123,7 +132,11 @@ class HttpGateway {
     }
   }
 
-  Never _throwForResponse(int status, String body, Map<String, String> headers) {
+  Never _throwForResponse(
+    int status,
+    String body,
+    Map<String, String> headers,
+  ) {
     // Backend errors are always `{error: string}`; anything else degrades to
     // a generic message rather than leaking a raw body into the UI.
     String message() {

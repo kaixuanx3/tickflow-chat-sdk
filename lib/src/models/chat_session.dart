@@ -4,13 +4,17 @@ import 'chat_role.dart';
 
 @immutable
 class ChatSession {
-  const ChatSession({required this.id, required this.mode, required this.status});
+  const ChatSession({
+    required this.id,
+    required this.mode,
+    required this.status,
+  });
 
   factory ChatSession.fromJson(Map<String, dynamic> json) => ChatSession(
-        id: json['id'] as String,
-        mode: SessionMode.fromWire(json['mode'] as String? ?? ''),
-        status: SessionStatus.fromWire(json['status'] as String? ?? ''),
-      );
+    id: json['id'] as String,
+    mode: SessionMode.fromWire(json['mode'] as String? ?? ''),
+    status: SessionStatus.fromWire(json['status'] as String? ?? ''),
+  );
 
   /// Placeholder for attaching to a session by id before server state is
   /// known (a fresh session is `ai`/`open`; history hydration is Phase 1).
@@ -22,11 +26,18 @@ class ChatSession {
   final SessionStatus status;
 
   ChatSession copyWith({SessionMode? mode, SessionStatus? status}) =>
-      ChatSession(id: id, mode: mode ?? this.mode, status: status ?? this.status);
+      ChatSession(
+        id: id,
+        mode: mode ?? this.mode,
+        status: status ?? this.status,
+      );
 
   @override
   bool operator ==(Object other) =>
-      other is ChatSession && other.id == id && other.mode == mode && other.status == status;
+      other is ChatSession &&
+      other.id == id &&
+      other.mode == mode &&
+      other.status == status;
 
   @override
   int get hashCode => Object.hash(id, mode, status);

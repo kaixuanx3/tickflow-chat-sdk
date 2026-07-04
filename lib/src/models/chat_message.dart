@@ -15,13 +15,14 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['id'] as String? ?? '',
-        sessionId: json['sessionId'] as String? ?? '',
-        role: ChatRole.fromWire(json['role'] as String? ?? ''),
-        content: json['content'] as String? ?? '',
-        createdAt:
-            DateTime.tryParse(json['createdAt'] as String? ?? '')?.toUtc() ?? DateTime.utc(1970),
-      );
+    id: json['id'] as String? ?? '',
+    sessionId: json['sessionId'] as String? ?? '',
+    role: ChatRole.fromWire(json['role'] as String? ?? ''),
+    content: json['content'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '')?.toUtc() ??
+        DateTime.utc(1970),
+  );
 
   /// Server id; empty until the server has acknowledged the message.
   final String id;
@@ -40,14 +41,14 @@ class ChatMessage {
   final String? clientTag;
 
   ChatMessage copyWith({String? content, MessageStatus? status}) => ChatMessage(
-        id: id,
-        sessionId: sessionId,
-        role: role,
-        content: content ?? this.content,
-        createdAt: createdAt,
-        status: status ?? this.status,
-        clientTag: clientTag,
-      );
+    id: id,
+    sessionId: sessionId,
+    role: role,
+    content: content ?? this.content,
+    createdAt: createdAt,
+    status: status ?? this.status,
+    clientTag: clientTag,
+  );
 
   @override
   bool operator ==(Object other) =>

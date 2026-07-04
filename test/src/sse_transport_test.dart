@@ -8,21 +8,28 @@ import 'package:tickflow_chat/src/transport/http_gateway.dart';
 import 'package:tickflow_chat/src/transport/sse_transport.dart';
 import 'package:tickflow_chat/tickflow_chat.dart';
 
-const sseBody = 'data: {"delta":"Hi"}\n\nevent: done\ndata: {"done":true,"escalated":false}\n\n';
+const sseBody =
+    'data: {"delta":"Hi"}\n\nevent: done\ndata: {"done":true,"escalated":false}\n\n';
 
 SseTransport transport(http.Client client) => SseTransport(
-      gateway: HttpGateway(TickflowChatConfig(
-        apiBaseUrl: Uri.parse('https://api.test'),
-        tokenProvider: () async => 'jwt',
-        httpClientFactory: () => client,
-      )),
-      sessionId: 's1',
-    );
+  gateway: HttpGateway(
+    TickflowChatConfig(
+      apiBaseUrl: Uri.parse('https://api.test'),
+      tokenProvider: () async => 'jwt',
+      httpClientFactory: () => client,
+    ),
+  ),
+  sessionId: 's1',
+);
 
 void main() {
   test('send pipes parsed events into the broadcast inbound stream', () async {
-    final t = transport(MockClient.streaming((req, _) async =>
-        http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200)));
+    final t = transport(
+      MockClient.streaming(
+        (req, _) async =>
+            http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200),
+      ),
+    );
     final collected = <ChatStreamEvent>[];
     final sub = t.inbound.listen(collected.add);
 
@@ -36,8 +43,14 @@ void main() {
   });
 
   test('initiation failures throw from send, not inbound', () async {
-    final t = transport(MockClient.streaming((req, _) async =>
-        http.StreamedResponse(Stream.value(utf8.encode('{"error":"gone"}')), 404)));
+    final t = transport(
+      MockClient.streaming(
+        (req, _) async => http.StreamedResponse(
+          Stream.value(utf8.encode('{"error":"gone"}')),
+          404,
+        ),
+      ),
+    );
     await expectLater(
       t.send('hello', clientTag: 'tag-1'),
       throwsA(isA<ChatNotFoundException>()),
@@ -47,8 +60,11 @@ void main() {
 
   test('a drop mid-reply surfaces as an inbound StreamFailure', () async {
     final controller = StreamController<List<int>>();
-    final t = transport(MockClient.streaming(
-        (req, _) async => http.StreamedResponse(controller.stream, 200)));
+    final t = transport(
+      MockClient.streaming(
+        (req, _) async => http.StreamedResponse(controller.stream, 200),
+      ),
+    );
     final collected = <ChatStreamEvent>[];
     t.inbound.listen(collected.add);
 
@@ -64,21 +80,27 @@ void main() {
     await t.close();
   });
 
-  test('cancelInFlight stops further events but keeps the transport usable', () async {
-    final controller = StreamController<List<int>>();
-    final t = transport(MockClient.streaming(
-        (req, _) async => http.StreamedResponse(controller.stream, 200)));
-    final collected = <ChatStreamEvent>[];
-    t.inbound.listen(collected.add);
+  test(
+    'cancelInFlight stops further events but keeps the transport usable',
+    () async {
+      final controller = StreamController<List<int>>();
+      final t = transport(
+        MockClient.streaming(
+          (req, _) async => http.StreamedResponse(controller.stream, 200),
+        ),
+      );
+      final collected = <ChatStreamEvent>[];
+      t.inbound.listen(collected.add);
 
-    await t.send('hello', clientTag: 'tag-1');
-    controller.add(utf8.encode('data: {"delta":"a"}\n\n'));
-    await pumpEventQueue();
-    t.cancelInFlight();
-    controller.add(utf8.encode('data: {"delta":"b"}\n\n'));
-    await pumpEventQueue();
+      await t.send('hello', clientTag: 'tag-1');
+      controller.add(utf8.encode('data: {"delta":"a"}\n\n'));
+      await pumpEventQueue();
+      t.cancelInFlight();
+      controller.add(utf8.encode('data: {"delta":"b"}\n\n'));
+      await pumpEventQueue();
 
-    expect(collected, hasLength(1));
-    await t.close();
-  });
+      expect(collected, hasLength(1));
+      await t.close();
+    },
+  );
 }
