@@ -105,20 +105,27 @@ class HttpGateway {
   /// the host to route to login. Tickflow has no refresh tokens, so a second
   /// identical token fails fast without a wasted call.
   Future<T> _authed<T>(Future<T> Function(String jwt) run) async {
-    final jwt = await _config.tokenProvider();
-    if (jwt == null || jwt.isEmpty) throw const ChatAuthException.missing();
     try {
-      return await run(jwt);
-    } on _Unauthorized {
-      final fresh = await _config.tokenProvider();
-      if (fresh == null || fresh.isEmpty || fresh == jwt) {
-        throw const ChatAuthException.expired();
-      }
+      final jwt = await _config.tokenProvider();
+      if (jwt == null || jwt.isEmpty) throw const ChatAuthException.missing();
       try {
-        return await run(fresh);
+        return await run(jwt);
       } on _Unauthorized {
-        throw const ChatAuthException.expired();
+        final fresh = await _config.tokenProvider();
+        if (fresh == null || fresh.isEmpty || fresh == jwt) {
+          throw const ChatAuthException.expired();
+        }
+        try {
+          return await run(fresh);
+        } on _Unauthorized {
+          throw const ChatAuthException.expired();
+        }
       }
+    } on ChatAuthException {
+      // Single choke point: any terminal auth failure (missing or rejected
+      // twice) notifies the host to route to login, then still surfaces.
+      _config.onAuthFailure?.call();
+      rethrow;
     }
   }
 

@@ -13,10 +13,12 @@ const sseBody =
 TickflowChatConfig config({
   TokenProvider? token,
   required http.Client client,
+  void Function()? onAuthFailure,
 }) => TickflowChatConfig(
   apiBaseUrl: Uri.parse('https://api.test'),
   tokenProvider: token ?? () async => 'jwt-1',
   httpClientFactory: () => client,
+  onAuthFailure: onAuthFailure,
 );
 
 void main() {
@@ -243,5 +245,63 @@ void main() {
       gateway.fetchHistory('nope'),
       throwsA(isA<ChatNotFoundException>()),
     );
+  });
+
+  test('onAuthFailure fires once when no token is available', () async {
+    var authFailures = 0;
+    final gateway = HttpGateway(
+      config(
+        token: () async => null,
+        onAuthFailure: () => authFailures++,
+        client: MockClient((req) async => http.Response(sessionJson, 200)),
+      ),
+    );
+    await expectLater(
+      gateway.createSession(),
+      throwsA(isA<ChatAuthException>()),
+    );
+    expect(authFailures, 1);
+  });
+
+  test('onAuthFailure fires when the token is rejected twice', () async {
+    var authFailures = 0;
+    final gateway = HttpGateway(
+      config(
+        token: () async => 'same',
+        onAuthFailure: () => authFailures++,
+        client: MockClient(
+          (req) async => http.Response('{"error":"unauthorized"}', 401),
+        ),
+      ),
+    );
+    await expectLater(
+      gateway.createSession(),
+      throwsA(isA<ChatAuthException>()),
+    );
+    expect(authFailures, 1);
+  });
+
+  test('onAuthFailure does not fire on success or a non-auth error', () async {
+    var authFailures = 0;
+    await HttpGateway(
+      config(
+        onAuthFailure: () => authFailures++,
+        client: MockClient((req) async => http.Response(sessionJson, 201)),
+      ),
+    ).createSession();
+
+    await expectLater(
+      HttpGateway(
+        config(
+          onAuthFailure: () => authFailures++,
+          client: MockClient(
+            (req) async => http.Response('{"error":"cap"}', 429),
+          ),
+        ),
+      ).createSession(),
+      throwsA(isA<ChatRateLimitException>()),
+    );
+
+    expect(authFailures, 0);
   });
 }
