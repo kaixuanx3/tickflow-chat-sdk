@@ -39,7 +39,11 @@ void main() {
     });
 
     test('copyWith changes only what was asked', () {
-      final m = ChatMessage.fromJson(const {'id': 'm1', 'role': 'user', 'content': 'a'});
+      final m = ChatMessage.fromJson(const {
+        'id': 'm1',
+        'role': 'user',
+        'content': 'a',
+      });
       final done = m.copyWith(content: 'ab', status: MessageStatus.streaming);
       expect(done.content, 'ab');
       expect(done.status, MessageStatus.streaming);
@@ -49,17 +53,37 @@ void main() {
   });
 
   test('ChatSession round-trips and copyWith preserves id', () {
-    final s = ChatSession.fromJson(const {'id': 's1', 'mode': 'ai', 'status': 'open'});
-    expect(s, const ChatSession(id: 's1', mode: SessionMode.ai, status: SessionStatus.open));
-    final esc = s.copyWith(mode: SessionMode.human, status: SessionStatus.escalated);
+    final s = ChatSession.fromJson(const {
+      'id': 's1',
+      'mode': 'ai',
+      'status': 'open',
+    });
+    expect(
+      s,
+      const ChatSession(
+        id: 's1',
+        mode: SessionMode.ai,
+        status: SessionStatus.open,
+      ),
+    );
+    final esc = s.copyWith(
+      mode: SessionMode.human,
+      status: SessionStatus.escalated,
+    );
     expect(esc.id, 's1');
     expect(esc.status, SessionStatus.escalated);
   });
 
   test('exceptions carry their designed recovery data', () {
-    const rate = ChatRateLimitException('daily cap', retryAfter: Duration(minutes: 5));
+    const rate = ChatRateLimitException(
+      'daily cap',
+      retryAfter: Duration(minutes: 5),
+    );
     expect(rate.retryAfter, const Duration(minutes: 5));
-    const stream = ChatStreamException('dropped', partialText: 'partial answer');
+    const stream = ChatStreamException(
+      'dropped',
+      partialText: 'partial answer',
+    );
     expect(stream.partialText, 'partial answer');
     // sealed: every variant is a ChatException with a message
     const List<ChatException> all = [

@@ -14,7 +14,8 @@ Future<List<ChatStreamEvent>> parse(Stream<List<int>> bytes) =>
     parseSseBytes(bytes).toList();
 
 void main() {
-  const canonical = 'data: {"delta":"He"}\n\n'
+  const canonical =
+      'data: {"delta":"He"}\n\n'
       'data: {"delta":"llo 世界"}\n\n'
       'event: done\ndata: {"done":true,"escalated":false}\n\n';
 
@@ -29,15 +30,19 @@ void main() {
     expectCanonical(await parse(Stream.value(utf8.encode(canonical))));
   });
 
-  test('is invariant under a split at every byte offset (multi-byte safe)', () async {
-    final bytes = utf8.encode(canonical);
-    for (var cut = 1; cut < bytes.length; cut++) {
-      expectCanonical(await parse(splitAt(bytes, cut)));
-    }
-  });
+  test(
+    'is invariant under a split at every byte offset (multi-byte safe)',
+    () async {
+      final bytes = utf8.encode(canonical);
+      for (var cut = 1; cut < bytes.length; cut++) {
+        expectCanonical(await parse(splitAt(bytes, cut)));
+      }
+    },
+  );
 
   test('handles CRLF line endings', () async {
-    const crlf = 'data: {"delta":"a"}\r\n\r\nevent: done\r\ndata: {"done":true,"escalated":true}\r\n\r\n';
+    const crlf =
+        'data: {"delta":"a"}\r\n\r\nevent: done\r\ndata: {"done":true,"escalated":true}\r\n\r\n';
     final events = await parse(Stream.value(utf8.encode(crlf)));
     expect((events[0] as TokenDelta).delta, 'a');
     expect((events[1] as StreamDone).escalated, isTrue);
@@ -89,12 +94,15 @@ void main() {
     expect((events.single as StreamDone).escalated, isTrue);
   });
 
-  test('discards an unterminated trailing frame (dropped connection)', () async {
-    const dropped = 'data: {"delta":"a"}\n\ndata: {"delta":"never finis';
-    final events = await parse(Stream.value(utf8.encode(dropped)));
-    expect(events, hasLength(1));
-    expect((events.single as TokenDelta).delta, 'a');
-  });
+  test(
+    'discards an unterminated trailing frame (dropped connection)',
+    () async {
+      const dropped = 'data: {"delta":"a"}\n\ndata: {"delta":"never finis';
+      final events = await parse(Stream.value(utf8.encode(dropped)));
+      expect(events, hasLength(1));
+      expect((events.single as TokenDelta).delta, 'a');
+    },
+  );
 
   test('empty deltas are suppressed as no-ops', () async {
     const empty = 'data: {"delta":""}\n\ndata: {"delta":"x"}\n\n';

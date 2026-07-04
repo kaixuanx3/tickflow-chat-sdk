@@ -32,7 +32,11 @@ class FakeTransport implements ChatTransport {
   }
 }
 
-const session = ChatSession(id: 's1', mode: SessionMode.ai, status: SessionStatus.open);
+const session = ChatSession(
+  id: 's1',
+  mode: SessionMode.ai,
+  status: SessionStatus.open,
+);
 
 void main() {
   late FakeTransport transport;
@@ -59,23 +63,29 @@ void main() {
     expect(last.clientTag, transport.sent.single.$2);
   });
 
-  test('a full turn: echo → tokens stream in → done settles everything', () async {
-    await engine.send('hi');
-    await emit(const TokenDelta('He'));
+  test(
+    'a full turn: echo → tokens stream in → done settles everything',
+    () async {
+      await engine.send('hi');
+      await emit(const TokenDelta('He'));
 
-    expect(engine.state.isStreaming, isTrue);
-    expect(engine.state.messages[0].status, MessageStatus.sent,
-        reason: 'first token confirms the echo');
-    expect(engine.state.messages[1].status, MessageStatus.streaming);
+      expect(engine.state.isStreaming, isTrue);
+      expect(
+        engine.state.messages[0].status,
+        MessageStatus.sent,
+        reason: 'first token confirms the echo',
+      );
+      expect(engine.state.messages[1].status, MessageStatus.streaming);
 
-    await emit(const TokenDelta('llo'));
-    expect(engine.state.messages[1].content, 'Hello');
+      await emit(const TokenDelta('llo'));
+      expect(engine.state.messages[1].content, 'Hello');
 
-    await emit(const StreamDone(escalated: false));
-    expect(engine.state.isStreaming, isFalse);
-    expect(engine.state.messages[1].status, MessageStatus.sent);
-    expect(engine.state.session.status, SessionStatus.open);
-  });
+      await emit(const StreamDone(escalated: false));
+      expect(engine.state.isStreaming, isFalse);
+      expect(engine.state.messages[1].status, MessageStatus.sent);
+      expect(engine.state.session.status, SessionStatus.open);
+    },
+  );
 
   test('done with escalated:true flips the session status', () async {
     await engine.send('I was charged twice');
@@ -84,12 +94,15 @@ void main() {
     expect(engine.state.session.status, SessionStatus.escalated);
   });
 
-  test('initiation failure marks the echo failed and surfaces a typed error', () async {
-    transport.throwOnSend = const ChatRateLimitException('daily cap');
-    await engine.send('hi');
-    expect(engine.state.messages.single.status, MessageStatus.failed);
-    expect(engine.state.error, isA<ChatRateLimitException>());
-  });
+  test(
+    'initiation failure marks the echo failed and surfaces a typed error',
+    () async {
+      transport.throwOnSend = const ChatRateLimitException('daily cap');
+      await engine.send('hi');
+      expect(engine.state.messages.single.status, MessageStatus.failed);
+      expect(engine.state.error, isA<ChatRateLimitException>());
+    },
+  );
 
   test('mid-stream failure keeps the partial reply and reports it', () async {
     await engine.send('hi');
@@ -99,11 +112,18 @@ void main() {
     expect(engine.state.isStreaming, isFalse);
     expect(engine.state.messages[1].content, 'partial ans');
     expect(engine.state.messages[1].status, MessageStatus.failed);
-    expect(engine.state.messages[0].status, MessageStatus.sent,
-        reason: 'the echo reached the server; the reply is what failed');
+    expect(
+      engine.state.messages[0].status,
+      MessageStatus.sent,
+      reason: 'the echo reached the server; the reply is what failed',
+    );
     expect(
       engine.state.error,
-      isA<ChatStreamException>().having((e) => e.partialText, 'partialText', 'partial ans'),
+      isA<ChatStreamException>().having(
+        (e) => e.partialText,
+        'partialText',
+        'partial ans',
+      ),
     );
   });
 
@@ -146,7 +166,11 @@ void main() {
     await engine.send('hi');
     await emit(const TokenDelta('a'));
     final first = await engine.changes.first;
-    expect(first.messages, hasLength(2), reason: 'late listener sees current state');
+    expect(
+      first.messages,
+      hasLength(2),
+      reason: 'late listener sees current state',
+    );
   });
 
   test('dispose closes the transport', () async {
@@ -155,29 +179,36 @@ void main() {
   });
 
   ChatMessage hist(String id, ChatRole role, String content) => ChatMessage(
-        id: id,
-        sessionId: session.id,
-        role: role,
-        content: content,
-        createdAt: DateTime.utc(2026, 7, 1),
+    id: id,
+    sessionId: session.id,
+    role: role,
+    content: content,
+    createdAt: DateTime.utc(2026, 7, 1),
+  );
+
+  test(
+    'load hydrates history and toggles isLoading around the fetch',
+    () async {
+      final gate = Completer<List<ChatMessage>>();
+      final loading = engine.load(() => gate.future);
+      expect(
+        engine.state.isLoading,
+        isTrue,
+        reason: 'loading starts synchronously',
       );
+      expect(engine.state.messages, isEmpty);
 
-  test('load hydrates history and toggles isLoading around the fetch', () async {
-    final gate = Completer<List<ChatMessage>>();
-    final loading = engine.load(() => gate.future);
-    expect(engine.state.isLoading, isTrue, reason: 'loading starts synchronously');
-    expect(engine.state.messages, isEmpty);
+      gate.complete([
+        hist('m1', ChatRole.user, 'earlier question'),
+        hist('m2', ChatRole.assistant, 'earlier answer'),
+      ]);
+      await loading;
 
-    gate.complete([
-      hist('m1', ChatRole.user, 'earlier question'),
-      hist('m2', ChatRole.assistant, 'earlier answer'),
-    ]);
-    await loading;
-
-    expect(engine.state.isLoading, isFalse);
-    expect(engine.state.messages, hasLength(2));
-    expect(engine.state.messages[1].content, 'earlier answer');
-  });
+      expect(engine.state.isLoading, isFalse);
+      expect(engine.state.messages, hasLength(2));
+      expect(engine.state.messages[1].content, 'earlier answer');
+    },
+  );
 
   test('load failure surfaces as error and clears loading', () async {
     await engine.load(() async => throw const ChatNotFoundException('gone'));

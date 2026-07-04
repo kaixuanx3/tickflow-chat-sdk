@@ -15,9 +15,11 @@ import 'chat_session_state.dart';
 /// publishes it on [changes]. Owns its transport: disposing the engine tears
 /// down the wire, so nothing outlives the screen that watches it.
 class ChatSessionEngine {
-  ChatSessionEngine({required ChatSession session, required ChatTransport transport})
-      : _transport = transport,
-        _state = ChatSessionState(session: session) {
+  ChatSessionEngine({
+    required ChatSession session,
+    required ChatTransport transport,
+  }) : _transport = transport,
+       _state = ChatSessionState(session: session) {
     _inboundSub = _transport.inbound.listen(_onEvent);
   }
 
@@ -51,32 +53,37 @@ class ChatSessionEngine {
 
     final tag = newClientTag();
     _pendingTag = tag;
-    _emit(_state.copyWith(
-      messages: [
-        ..._state.messages,
-        ChatMessage(
-          id: '',
-          sessionId: _state.session.id,
-          role: ChatRole.user,
-          content: trimmed,
-          createdAt: DateTime.now().toUtc(),
-          status: MessageStatus.sending,
-          clientTag: tag,
-        ),
-      ],
-      clearError: true,
-    ));
+    _emit(
+      _state.copyWith(
+        messages: [
+          ..._state.messages,
+          ChatMessage(
+            id: '',
+            sessionId: _state.session.id,
+            role: ChatRole.user,
+            content: trimmed,
+            createdAt: DateTime.now().toUtc(),
+            status: MessageStatus.sending,
+            clientTag: tag,
+          ),
+        ],
+        clearError: true,
+      ),
+    );
 
     try {
       await _transport.send(trimmed, clientTag: tag);
     } on Exception catch (e) {
-      final error =
-          e is ChatException ? e : ChatApiException(null, e.toString());
+      final error = e is ChatException
+          ? e
+          : ChatApiException(null, e.toString());
       _pendingTag = null;
-      _emit(_state.copyWith(
-        messages: _withStatus(tag, MessageStatus.failed),
-        error: error,
-      ));
+      _emit(
+        _state.copyWith(
+          messages: _withStatus(tag, MessageStatus.failed),
+          error: error,
+        ),
+      );
     }
   }
 
@@ -117,9 +124,11 @@ class ChatSessionEngine {
       case StreamDone(:final escalated):
         _settleTurn(assistantStatus: MessageStatus.sent);
         if (escalated) {
-          _emit(_state.copyWith(
-            session: _state.session.copyWith(status: SessionStatus.escalated),
-          ));
+          _emit(
+            _state.copyWith(
+              session: _state.session.copyWith(status: SessionStatus.escalated),
+            ),
+          );
         }
       case StreamFailure(:final message):
         _onFailure(message);
@@ -132,16 +141,20 @@ class ChatSessionEngine {
       // First token: confirm the echo, open the streaming reply bubble.
       if (_pendingTag != null) {
         final i = _indexOfTag(_pendingTag!);
-        if (i != null) messages[i] = messages[i].copyWith(status: MessageStatus.sent);
+        if (i != null) {
+          messages[i] = messages[i].copyWith(status: MessageStatus.sent);
+        }
       }
-      messages.add(ChatMessage(
-        id: '',
-        sessionId: _state.session.id,
-        role: ChatRole.assistant,
-        content: delta,
-        createdAt: DateTime.now().toUtc(),
-        status: MessageStatus.streaming,
-      ));
+      messages.add(
+        ChatMessage(
+          id: '',
+          sessionId: _state.session.id,
+          role: ChatRole.assistant,
+          content: delta,
+          createdAt: DateTime.now().toUtc(),
+          status: MessageStatus.streaming,
+        ),
+      );
       _streamingIndex = messages.length - 1;
       _emit(_state.copyWith(messages: messages, isStreaming: true));
       return;
@@ -153,27 +166,32 @@ class ChatSessionEngine {
 
   void _onFailure(String message) {
     final partialIndex = _streamingIndex;
-    final partial =
-        partialIndex == null ? null : _state.messages[partialIndex].content;
+    final partial = partialIndex == null
+        ? null
+        : _state.messages[partialIndex].content;
     // No reply arrived → the user message itself failed and can be retried;
     // with a partial, the echo stands and the reply is what failed.
-    final echoStatus =
-        partial == null ? MessageStatus.failed : MessageStatus.sent;
+    final echoStatus = partial == null
+        ? MessageStatus.failed
+        : MessageStatus.sent;
     var messages = _pendingTag == null
         ? _state.messages
         : _withStatus(_pendingTag!, echoStatus);
     if (partialIndex != null) {
       messages = [...messages];
-      messages[partialIndex] =
-          messages[partialIndex].copyWith(status: MessageStatus.failed);
+      messages[partialIndex] = messages[partialIndex].copyWith(
+        status: MessageStatus.failed,
+      );
     }
     _pendingTag = null;
     _streamingIndex = null;
-    _emit(_state.copyWith(
-      messages: messages,
-      isStreaming: false,
-      error: ChatStreamException(message, partialText: partial),
-    ));
+    _emit(
+      _state.copyWith(
+        messages: messages,
+        isStreaming: false,
+        error: ChatStreamException(message, partialText: partial),
+      ),
+    );
   }
 
   void _settleTurn({required MessageStatus assistantStatus}) {

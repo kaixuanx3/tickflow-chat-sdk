@@ -128,7 +128,10 @@ class _Composer extends StatelessWidget {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(22)),
                 ),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
             ),
           ),

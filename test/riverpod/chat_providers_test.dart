@@ -7,15 +7,18 @@ import 'package:http/testing.dart';
 import 'package:tickflow_chat/tickflow_chat.dart';
 import 'package:tickflow_chat/tickflow_chat_riverpod.dart';
 
-const sseBody = 'data: {"delta":"Hi "}\n\ndata: {"delta":"there"}\n\n'
+const sseBody =
+    'data: {"delta":"Hi "}\n\ndata: {"delta":"there"}\n\n'
     'event: done\ndata: {"done":true,"escalated":false}\n\n';
 
 TickflowChatConfig testConfig() => TickflowChatConfig(
-      apiBaseUrl: Uri.parse('https://api.test'),
-      tokenProvider: () async => 'jwt',
-      httpClientFactory: () => MockClient.streaming((req, _) async =>
-          http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200)),
-    );
+  apiBaseUrl: Uri.parse('https://api.test'),
+  tokenProvider: () async => 'jwt',
+  httpClientFactory: () => MockClient.streaming(
+    (req, _) async =>
+        http.StreamedResponse(Stream.value(utf8.encode(sseBody)), 200),
+  ),
+);
 
 void main() {
   test('chatConfigProvider throws until the host overrides it', () {
@@ -24,7 +27,9 @@ void main() {
     expect(
       () => container.read(chatClientProvider),
       // riverpod 3 wraps the UnimplementedError in a ProviderException
-      throwsA(predicate((e) => e.toString().contains('Override chatConfigProvider'))),
+      throwsA(
+        predicate((e) => e.toString().contains('Override chatConfigProvider')),
+      ),
     );
   });
 

@@ -18,9 +18,9 @@ class TickflowChatClient {
   Future<ChatSession> createSession() => _gateway.createSession();
 
   ChatSessionEngine engineFor(ChatSession session) => ChatSessionEngine(
-        session: session,
-        transport: SseTransport(gateway: _gateway, sessionId: session.id),
-      );
+    session: session,
+    transport: SseTransport(gateway: _gateway, sessionId: session.id),
+  );
 
   /// Resumes an existing session: builds its engine and starts hydrating
   /// history. Returns immediately with the engine in a loading state — watch

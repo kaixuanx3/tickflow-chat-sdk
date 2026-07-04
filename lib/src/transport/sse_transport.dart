@@ -8,8 +8,8 @@ import 'http_gateway.dart';
 /// AI mode: each [send] is one POST whose response body streams the reply.
 class SseTransport implements ChatTransport {
   SseTransport({required HttpGateway gateway, required String sessionId})
-      : _gateway = gateway,
-        _sessionId = sessionId;
+    : _gateway = gateway,
+      _sessionId = sessionId;
 
   final HttpGateway _gateway;
   final String _sessionId;
@@ -34,8 +34,9 @@ class SseTransport implements ChatTransport {
       _inbound.add,
       // A drop mid-reply becomes a typed inbound event; the engine keeps the
       // partial text and offers retry instead of seeing a stream error.
-      onError: (Object e) => _inbound
-          .add(StreamFailure(e is ChatException ? e.message : 'connection lost')),
+      onError: (Object e) => _inbound.add(
+        StreamFailure(e is ChatException ? e.message : 'connection lost'),
+      ),
       onDone: () => _active = null,
     );
   }
