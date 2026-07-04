@@ -20,6 +20,7 @@ class TickflowChatClient {
   ChatSessionEngine engineFor(ChatSession session) => ChatSessionEngine(
     session: session,
     transport: SseTransport(gateway: _gateway, sessionId: session.id),
+    escalate: () => _gateway.escalate(session.id),
   );
 
   /// Resumes an existing session: builds its engine and starts hydrating

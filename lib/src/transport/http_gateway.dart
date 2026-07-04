@@ -65,6 +65,27 @@ class HttpGateway {
             .toList(growable: false);
       });
 
+  /// Escalates a session to human support via POST /escalate. Idempotent
+  /// server-side (escalating an already-escalated session returns its current
+  /// state). Returns the updated session; a 404 surfaces as
+  /// [ChatNotFoundException].
+  Future<ChatSession> escalate(String sessionId) => _authed((jwt) async {
+    final res = await _guardNetwork(
+      () => _client
+          .post(
+            _config.apiBaseUrl.resolve(
+              '/chat/sessions/${Uri.encodeComponent(sessionId)}/escalate',
+            ),
+            headers: _headers(jwt),
+          )
+          .timeout(_config.requestTimeout),
+    );
+    if (res.statusCode != 200) {
+      _throwForResponse(res.statusCode, res.body, res.headers);
+    }
+    return ChatSession.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  });
+
   /// Opens one AI reply turn: POST → `text/event-stream` → parsed events.
   ///
   /// Non-200 is mapped and thrown before any event; a 401 at open retries

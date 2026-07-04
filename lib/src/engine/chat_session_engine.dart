@@ -18,12 +18,15 @@ class ChatSessionEngine {
   ChatSessionEngine({
     required ChatSession session,
     required ChatTransport transport,
+    Future<ChatSession> Function()? escalate,
   }) : _transport = transport,
+       _escalate = escalate,
        _state = ChatSessionState(session: session) {
     _inboundSub = _transport.inbound.listen(_onEvent);
   }
 
   final ChatTransport _transport;
+  final Future<ChatSession> Function()? _escalate;
   late final StreamSubscription<ChatStreamEvent> _inboundSub;
   final _changes = StreamController<ChatSessionState>.broadcast();
 
@@ -134,6 +137,22 @@ class ChatSessionEngine {
       _emit(_state.copyWith(messages: history, isLoading: false));
     } on ChatException catch (e) {
       _emit(_state.copyWith(isLoading: false, error: e));
+    }
+  }
+
+  /// Hands the session to human support via POST /escalate (idempotent
+  /// server-side). On success the session flips to escalated; with no agent
+  /// present yet, the UI renders the async "we'll follow up by email" state.
+  /// A failure surfaces on [ChatSessionState.error]; a no-op if escalation
+  /// wasn't wired into this engine.
+  Future<void> escalate() async {
+    final escalate = _escalate;
+    if (escalate == null) return;
+    try {
+      final session = await escalate();
+      _emit(_state.copyWith(session: session, clearError: true));
+    } on ChatException catch (e) {
+      _emit(_state.copyWith(error: e));
     }
   }
 
