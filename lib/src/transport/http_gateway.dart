@@ -31,6 +31,9 @@ class HttpGateway {
           .post(
             _config.apiBaseUrl.resolve('/chat/sessions'),
             headers: _headers(jwt),
+            // The JSON Content-Type header makes the server reject a truly
+            // empty body (400); send an empty object for these bodyless POSTs.
+            body: '{}',
           )
           .timeout(_config.requestTimeout),
     );
@@ -77,6 +80,7 @@ class HttpGateway {
               '/chat/sessions/${Uri.encodeComponent(sessionId)}/escalate',
             ),
             headers: _headers(jwt),
+            body: '{}', // bodyless POST — see createSession
           )
           .timeout(_config.requestTimeout),
     );
