@@ -68,6 +68,7 @@ class ChatSessionEngine {
           ),
         ],
         clearError: true,
+        clearRetryAt: true,
       ),
     );
 
@@ -88,6 +89,7 @@ class ChatSessionEngine {
       _state.copyWith(
         messages: _withStatus(clientTag, MessageStatus.sending),
         clearError: true,
+        clearRetryAt: true,
       ),
     );
     await _dispatch(text, clientTag);
@@ -103,10 +105,17 @@ class ChatSessionEngine {
           ? e
           : ChatApiException(null, e.toString());
       _pendingTag = null;
+      // A 429 with a Retry-After becomes an absolute cooldown the composer
+      // blocks sending until; any other failure leaves no cooldown.
+      final retryAt =
+          error is ChatRateLimitException && error.retryAfter != null
+          ? DateTime.now().toUtc().add(error.retryAfter!)
+          : null;
       _emit(
         _state.copyWith(
           messages: _withStatus(tag, MessageStatus.failed),
           error: error,
+          retryAt: retryAt,
         ),
       );
     }
