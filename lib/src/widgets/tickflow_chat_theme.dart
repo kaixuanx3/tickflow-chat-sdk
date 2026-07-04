@@ -34,6 +34,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
     required this.warningBackground,
     required this.warningOutline,
     required this.agentAccent,
+    required this.success,
     required this.userBubbleRadius,
     required this.assistantBubbleRadius,
   });
@@ -83,6 +84,10 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
   /// Human-agent identity (name label, avatar gradient).
   final Color agentAccent;
 
+  /// Positive accents (the "replies instantly" line, presence). Darkened
+  /// from the prototype's #12B76A, which fails AA on white.
+  final Color success;
+
   /// Tail bottom-right (18/18/5/18 in the prototype).
   final BorderRadius userBubbleRadius;
 
@@ -107,6 +112,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
     warningBackground: Color(0xFFFFFAEB),
     warningOutline: Color(0xFFFEDF89),
     agentAccent: Color(0xFFDC6803),
+    success: Color(0xFF027A48),
     userBubbleRadius: _userRadius,
     assistantBubbleRadius: _assistantRadius,
   );
@@ -131,6 +137,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
     warningBackground: Color(0xFF2A2412),
     warningOutline: Color(0xFF4A3E1A),
     agentAccent: Color(0xFFF79009),
+    success: Color(0xFF027A48),
     userBubbleRadius: _userRadius,
     assistantBubbleRadius: _assistantRadius,
   );
@@ -176,6 +183,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
     Color? warningBackground,
     Color? warningOutline,
     Color? agentAccent,
+    Color? success,
     BorderRadius? userBubbleRadius,
     BorderRadius? assistantBubbleRadius,
   }) => TickflowChatTheme(
@@ -196,6 +204,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
     warningBackground: warningBackground ?? this.warningBackground,
     warningOutline: warningOutline ?? this.warningOutline,
     agentAccent: agentAccent ?? this.agentAccent,
+    success: success ?? this.success,
     userBubbleRadius: userBubbleRadius ?? this.userBubbleRadius,
     assistantBubbleRadius: assistantBubbleRadius ?? this.assistantBubbleRadius,
   );
@@ -225,6 +234,7 @@ class TickflowChatTheme extends ThemeExtension<TickflowChatTheme> {
       )!,
       warningOutline: Color.lerp(warningOutline, other.warningOutline, t)!,
       agentAccent: Color.lerp(agentAccent, other.agentAccent, t)!,
+      success: Color.lerp(success, other.success, t)!,
       userBubbleRadius: BorderRadius.lerp(
         userBubbleRadius,
         other.userBubbleRadius,
