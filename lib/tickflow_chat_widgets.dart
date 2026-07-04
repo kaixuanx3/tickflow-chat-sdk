@@ -5,6 +5,7 @@
 /// with their own UI import the core or riverpod barrels and skip this one.
 library;
 
+export 'src/widgets/chat_escalate_button.dart';
 export 'src/widgets/chat_view.dart';
 export 'src/widgets/tickflow_chat_localizations.dart';
 export 'src/widgets/tickflow_chat_theme.dart';
