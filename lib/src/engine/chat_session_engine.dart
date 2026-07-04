@@ -80,6 +80,22 @@ class ChatSessionEngine {
     }
   }
 
+  /// Hydrates this session's history on resume. Flips
+  /// [ChatSessionState.isLoading] while [fetchHistory] runs, then replaces
+  /// [ChatSessionState.messages] with the server's copy. A failure surfaces
+  /// as [ChatSessionState.error] — never thrown — so the UI can offer retry,
+  /// mirroring how send failures are reported. Meant to run once, before any
+  /// send.
+  Future<void> load(Future<List<ChatMessage>> Function() fetchHistory) async {
+    _emit(_state.copyWith(isLoading: true, clearError: true));
+    try {
+      final history = await fetchHistory();
+      _emit(_state.copyWith(messages: history, isLoading: false));
+    } on ChatException catch (e) {
+      _emit(_state.copyWith(isLoading: false, error: e));
+    }
+  }
+
   /// Stops the in-flight reply, keeping any partial text. The partial is
   /// finalized as `sent` — an explicit user intent, not a failure.
   void cancelInFlight() {

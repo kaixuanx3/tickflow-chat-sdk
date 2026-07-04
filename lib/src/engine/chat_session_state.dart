@@ -11,6 +11,7 @@ class ChatSessionState {
   const ChatSessionState({
     required this.session,
     this.messages = const [],
+    this.isLoading = false,
     this.isStreaming = false,
     this.error,
   });
@@ -19,6 +20,9 @@ class ChatSessionState {
 
   /// Includes the optimistic echo and the in-progress streaming reply.
   final List<ChatMessage> messages;
+
+  /// True while history is being hydrated on resume.
+  final bool isLoading;
 
   /// True while an AI reply is mid-stream.
   final bool isStreaming;
@@ -30,6 +34,7 @@ class ChatSessionState {
   ChatSessionState copyWith({
     ChatSession? session,
     List<ChatMessage>? messages,
+    bool? isLoading,
     bool? isStreaming,
     ChatException? error,
     bool clearError = false,
@@ -37,6 +42,7 @@ class ChatSessionState {
       ChatSessionState(
         session: session ?? this.session,
         messages: messages ?? this.messages,
+        isLoading: isLoading ?? this.isLoading,
         isStreaming: isStreaming ?? this.isStreaming,
         error: clearError ? null : (error ?? this.error),
       );

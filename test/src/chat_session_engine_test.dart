@@ -153,4 +153,36 @@ void main() {
     await engine.dispose();
     expect(transport.closed, isTrue);
   });
+
+  ChatMessage hist(String id, ChatRole role, String content) => ChatMessage(
+        id: id,
+        sessionId: session.id,
+        role: role,
+        content: content,
+        createdAt: DateTime.utc(2026, 7, 1),
+      );
+
+  test('load hydrates history and toggles isLoading around the fetch', () async {
+    final gate = Completer<List<ChatMessage>>();
+    final loading = engine.load(() => gate.future);
+    expect(engine.state.isLoading, isTrue, reason: 'loading starts synchronously');
+    expect(engine.state.messages, isEmpty);
+
+    gate.complete([
+      hist('m1', ChatRole.user, 'earlier question'),
+      hist('m2', ChatRole.assistant, 'earlier answer'),
+    ]);
+    await loading;
+
+    expect(engine.state.isLoading, isFalse);
+    expect(engine.state.messages, hasLength(2));
+    expect(engine.state.messages[1].content, 'earlier answer');
+  });
+
+  test('load failure surfaces as error and clears loading', () async {
+    await engine.load(() async => throw const ChatNotFoundException('gone'));
+    expect(engine.state.isLoading, isFalse);
+    expect(engine.state.messages, isEmpty);
+    expect(engine.state.error, isA<ChatNotFoundException>());
+  });
 }

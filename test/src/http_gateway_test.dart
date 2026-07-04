@@ -136,4 +136,35 @@ void main() {
       throwsA(isA<ChatRateLimitException>()),
     );
   });
+
+  test('fetchHistory GETs the messages endpoint and parses the envelope', () async {
+    late http.Request seen;
+    final gateway = HttpGateway(config(
+      client: MockClient((req) async {
+        seen = req;
+        return http.Response(
+          '{"messages":['
+          '{"id":"m1","sessionId":"s1","role":"user","content":"hi","createdAt":"2026-07-01T10:00:00.000Z"},'
+          '{"id":"m2","sessionId":"s1","role":"assistant","content":"hello","createdAt":"2026-07-01T10:00:01.000Z"}'
+          ']}',
+          200,
+        );
+      }),
+    ));
+    final messages = await gateway.fetchHistory('s1');
+    expect(seen.method, 'GET');
+    expect(seen.url.path, '/chat/sessions/s1/messages');
+    expect(seen.headers['Authorization'], 'Bearer jwt-1');
+    expect(messages, hasLength(2));
+    expect(messages[0].role, ChatRole.user);
+    expect(messages[1].content, 'hello');
+    expect(messages[0].status, MessageStatus.sent, reason: 'persisted history is settled');
+  });
+
+  test('fetchHistory maps 404 to ChatNotFoundException', () async {
+    final gateway = HttpGateway(config(
+      client: MockClient((req) async => http.Response('{"error":"session not found"}', 404)),
+    ));
+    await expectLater(gateway.fetchHistory('nope'), throwsA(isA<ChatNotFoundException>()));
+  });
 }

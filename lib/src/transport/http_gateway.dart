@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/chat_config.dart';
 import '../models/chat_exception.dart';
+import '../models/chat_message.dart';
 import '../models/chat_session.dart';
 import '../models/stream_event.dart';
 import 'http_client_factory.dart';
@@ -32,6 +33,27 @@ class HttpGateway {
           _throwForResponse(res.statusCode, res.body, res.headers);
         }
         return ChatSession.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      });
+
+  /// Loads a session's persisted messages, oldest-first, from
+  /// `{"messages": [...]}`. A 404 (not found, or not owned — the lookup is
+  /// scoped server-side) surfaces as [ChatNotFoundException].
+  Future<List<ChatMessage>> fetchHistory(String sessionId) => _authed((jwt) async {
+        final res = await _guardNetwork(() => _client
+            .get(
+              _config.apiBaseUrl
+                  .resolve('/chat/sessions/${Uri.encodeComponent(sessionId)}/messages'),
+              headers: _headers(jwt),
+            )
+            .timeout(_config.requestTimeout));
+        if (res.statusCode != 200) {
+          _throwForResponse(res.statusCode, res.body, res.headers);
+        }
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final messages = json['messages'] as List<dynamic>? ?? const [];
+        return messages
+            .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+            .toList(growable: false);
       });
 
   /// Opens one AI reply turn: POST → `text/event-stream` → parsed events.
