@@ -6,3 +6,4 @@
 library;
 
 export 'src/widgets/chat_view.dart';
+export 'src/widgets/tickflow_chat_theme.dart';
