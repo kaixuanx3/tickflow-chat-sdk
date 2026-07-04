@@ -7,6 +7,7 @@
 library;
 
 export 'src/client/chat_client.dart';
+export 'src/client/chat_read_marks.dart';
 export 'src/config/chat_config.dart';
 export 'src/engine/chat_session_engine.dart';
 export 'src/engine/chat_session_state.dart';

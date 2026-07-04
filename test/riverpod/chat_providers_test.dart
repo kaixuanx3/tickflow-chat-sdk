@@ -26,6 +26,20 @@ TickflowChatConfig testConfig() => TickflowChatConfig(
   }),
 );
 
+class _RecordingMarks implements ChatReadMarks {
+  _RecordingMarks(this.recorded);
+
+  final List<String> recorded;
+
+  @override
+  DateTime? lastReadAt(String sessionId) => null;
+
+  @override
+  Future<void> markRead(String sessionId, DateTime at) async {
+    recorded.add(sessionId);
+  }
+}
+
 void main() {
   test('chatConfigProvider throws until the host overrides it', () {
     final container = ProviderContainer();
@@ -128,5 +142,55 @@ void main() {
     final state = container.read(chatSessionProvider('s1'));
     expect(state.isLoading, isFalse);
     expect(state.messages.single.content, 'earlier answer');
+  });
+
+  test('opening and leaving a thread records read marks', () async {
+    final recorded = <String>[];
+    final container = ProviderContainer(
+      overrides: [
+        chatConfigProvider.overrideWithValue(testConfig()),
+        chatReadMarksProvider.overrideWithValue(_RecordingMarks(recorded)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final sub = container.listen(chatSessionProvider('s1'), (_, _) {});
+    await pumpEventQueue();
+    expect(recorded, ['s1'], reason: 'opening the thread marks it read');
+
+    sub.close();
+    await pumpEventQueue();
+    expect(recorded, [
+      's1',
+      's1',
+    ], reason: 'leaving marks again, covering replies read while open');
+  });
+
+  test('chatSessionIsUnread compares updatedAt to the local mark', () async {
+    final marks = InMemoryChatReadMarks();
+    final session = ChatSession.fromJson(const {
+      'id': 's1',
+      'mode': 'ai',
+      'status': 'open',
+      'updatedAt': '2026-07-05T10:00:00.000Z',
+    });
+
+    expect(chatSessionIsUnread(marks, session), isTrue, reason: 'never read');
+
+    await marks.markRead('s1', DateTime.utc(2026, 7, 5, 11));
+    expect(chatSessionIsUnread(marks, session), isFalse);
+
+    await marks.markRead('s1', DateTime.utc(2026, 7, 5, 9));
+    expect(
+      chatSessionIsUnread(marks, session),
+      isTrue,
+      reason: 'activity newer than the mark badges again',
+    );
+
+    expect(
+      chatSessionIsUnread(marks, ChatSession.stub('x')),
+      isFalse,
+      reason: 'no updatedAt on the wire → never badges',
+    );
   });
 }
