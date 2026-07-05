@@ -103,9 +103,12 @@ ChatStreamEvent? chatStreamEventFrom(SseEvent e) {
 
 /// The full pipe from an SSE response body to chat events. Survives
 /// arbitrary chunk boundaries: a UTF-8 code point, a line, or a frame split
-/// across reads reassembles identically.
+/// across reads reassembles identically. Malformed UTF-8 decodes to
+/// replacement characters instead of throwing — a corrupt byte degrades one
+/// delta (or one frame, via the malformed-JSON path) rather than killing
+/// the stream.
 Stream<ChatStreamEvent> parseSseBytes(Stream<List<int>> bytes) => bytes
-    .transform(utf8.decoder)
+    .transform(const Utf8Decoder(allowMalformed: true))
     .transform(const LineSplitter())
     .transform(const SseEventFramer())
     .map(chatStreamEventFrom)
