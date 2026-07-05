@@ -386,4 +386,83 @@ void main() {
     await engine.send('hi');
     expect(engine.state.isAwaitingReply, isFalse);
   });
+
+  test(
+    'telemetry: a happy turn reports started → first token → completed',
+    () async {
+      final events = <ChatTelemetryEvent>[];
+      final e = ChatSessionEngine(
+        session: session,
+        transport: transport,
+        onTelemetry: events.add,
+      );
+      addTearDown(e.dispose);
+
+      await e.send('hi');
+      transport.controller.add(const TokenDelta('He'));
+      await pumpEventQueue();
+      transport.controller.add(const StreamDone(escalated: true));
+      await pumpEventQueue();
+
+      expect(events, hasLength(3));
+      expect(events[0], isA<ChatTurnStarted>());
+      final first = events[1] as ChatFirstToken;
+      expect(first.latency, greaterThanOrEqualTo(Duration.zero));
+      final done = events[2] as ChatTurnCompleted;
+      expect(done.escalated, isTrue);
+      expect(done.duration, greaterThanOrEqualTo(first.latency));
+      expect(events.every((ev) => ev.sessionId == 's1'), isTrue);
+    },
+  );
+
+  test('telemetry: failures report the error type, never content', () async {
+    final events = <ChatTelemetryEvent>[];
+    final t2 = FakeTransport()
+      ..throwOnSend = const ChatRateLimitException('cap');
+    final e = ChatSessionEngine(
+      session: session,
+      transport: t2,
+      onTelemetry: events.add,
+    );
+    addTearDown(e.dispose);
+
+    await e.send('hi');
+    expect(events[0], isA<ChatTurnStarted>());
+    expect((events[1] as ChatTurnFailed).errorType, 'ChatRateLimitException');
+
+    t2.throwOnSend = null;
+    await e.retry(e.state.messages.single.clientTag!);
+    t2.controller.add(const StreamFailure('reset'));
+    await pumpEventQueue();
+    expect((events.last as ChatTurnFailed).errorType, 'ChatStreamException');
+  });
+
+  test(
+    'telemetry: escalation reports; a throwing handler never breaks a turn',
+    () async {
+      final events = <ChatTelemetryEvent>[];
+      final e = ChatSessionEngine(
+        session: session,
+        transport: transport,
+        escalate: () async => session.copyWith(status: SessionStatus.escalated),
+        onTelemetry: (event) {
+          events.add(event);
+          throw StateError('bad host handler');
+        },
+      );
+      addTearDown(e.dispose);
+
+      await e.escalate();
+      expect(events.single, isA<ChatSessionEscalatedEvent>());
+
+      await e.send('hi');
+      transport.controller.add(const TokenDelta('a'));
+      await pumpEventQueue();
+      expect(
+        e.state.isStreaming,
+        isTrue,
+        reason: 'the turn must survive throwing telemetry handlers',
+      );
+    },
+  );
 }

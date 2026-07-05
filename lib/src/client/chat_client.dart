@@ -24,6 +24,7 @@ class TickflowChatClient {
     session: session,
     transport: SseTransport(gateway: _gateway, sessionId: session.id),
     escalate: () => _gateway.escalate(session.id),
+    onTelemetry: config.onTelemetry,
   );
 
   /// Resumes an existing session: builds its engine and starts hydrating
