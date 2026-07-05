@@ -4,6 +4,7 @@ import '../models/chat_exception.dart';
 import '../models/chat_message.dart';
 import '../models/chat_role.dart';
 import '../models/chat_session.dart';
+import '../models/chat_telemetry.dart';
 import '../models/stream_event.dart';
 import '../transport/chat_transport.dart';
 import '../util/ids.dart';
@@ -19,14 +20,32 @@ class ChatSessionEngine {
     required ChatSession session,
     required ChatTransport transport,
     Future<ChatSession> Function()? escalate,
+    void Function(ChatTelemetryEvent event)? onTelemetry,
   }) : _transport = transport,
        _escalate = escalate,
+       _onTelemetry = onTelemetry,
        _state = ChatSessionState(session: session) {
     _inboundSub = _transport.inbound.listen(_onEvent);
   }
 
   final ChatTransport _transport;
   final Future<ChatSession> Function()? _escalate;
+  final void Function(ChatTelemetryEvent event)? _onTelemetry;
+
+  /// When the in-flight turn was dispatched; anchors latency/duration
+  /// telemetry.
+  DateTime? _turnStartedAt;
+
+  /// Telemetry must never break a conversation: handler errors are
+  /// swallowed.
+  void _tell(ChatTelemetryEvent event) {
+    try {
+      _onTelemetry?.call(event);
+    } catch (_) {
+      // Host handler misbehaved; the turn goes on.
+    }
+  }
+
   late final StreamSubscription<ChatStreamEvent> _inboundSub;
   final _changes = StreamController<ChatSessionState>.broadcast();
 
@@ -76,6 +95,8 @@ class ChatSessionEngine {
       ),
     );
 
+    _turnStartedAt = DateTime.now();
+    _tell(ChatTurnStarted(_state.session.id));
     await _dispatch(trimmed, tag);
   }
 
@@ -97,6 +118,8 @@ class ChatSessionEngine {
         clearRetryAt: true,
       ),
     );
+    _turnStartedAt = DateTime.now();
+    _tell(ChatTurnStarted(_state.session.id));
     await _dispatch(text, clientTag);
   }
 
@@ -122,6 +145,13 @@ class ChatSessionEngine {
           isAwaitingReply: false,
           error: error,
           retryAt: retryAt,
+        ),
+      );
+      _turnStartedAt = null;
+      _tell(
+        ChatTurnFailed(
+          _state.session.id,
+          errorType: error.runtimeType.toString(),
         ),
       );
     }
@@ -163,6 +193,7 @@ class ChatSessionEngine {
     try {
       final session = await escalate();
       _emit(_state.copyWith(session: session, clearError: true));
+      _tell(ChatSessionEscalatedEvent(session.id));
     } on ChatException catch (e) {
       _emit(_state.copyWith(error: e));
     }
@@ -174,6 +205,9 @@ class ChatSessionEngine {
     if (_streamingIndex == null && _pendingTag == null) return;
     _transport.cancelInFlight();
     _settleTurn(assistantStatus: MessageStatus.sent);
+    // Deliberate user intent — neither a completion nor a failure, so no
+    // turn telemetry.
+    _turnStartedAt = null;
   }
 
   Future<void> dispose() async {
@@ -192,6 +226,17 @@ class ChatSessionEngine {
           _emit(
             _state.copyWith(
               session: _state.session.copyWith(status: SessionStatus.escalated),
+            ),
+          );
+        }
+        final startedAt = _turnStartedAt;
+        if (startedAt != null) {
+          _turnStartedAt = null;
+          _tell(
+            ChatTurnCompleted(
+              _state.session.id,
+              duration: DateTime.now().difference(startedAt),
+              escalated: escalated,
             ),
           );
         }
@@ -228,6 +273,15 @@ class ChatSessionEngine {
           isStreaming: true,
         ),
       );
+      final startedAt = _turnStartedAt;
+      if (startedAt != null) {
+        _tell(
+          ChatFirstToken(
+            _state.session.id,
+            latency: DateTime.now().difference(startedAt),
+          ),
+        );
+      }
       return;
     }
     final i = _streamingIndex!;
@@ -264,6 +318,8 @@ class ChatSessionEngine {
         error: ChatStreamException(message, partialText: partial),
       ),
     );
+    _turnStartedAt = null;
+    _tell(ChatTurnFailed(_state.session.id, errorType: 'ChatStreamException'));
   }
 
   void _settleTurn({required MessageStatus assistantStatus}) {

@@ -1,6 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
+import '../models/chat_telemetry.dart';
+
 /// Returns the current Tickflow JWT, or null when signed out.
 ///
 /// Called before every request — the host's secure-storage read (and any
@@ -15,6 +17,7 @@ class TickflowChatConfig {
     this.requestTimeout = const Duration(seconds: 30),
     this.httpClientFactory,
     this.onAuthFailure,
+    this.onTelemetry,
   });
 
   /// Backend origin, e.g. `Uri.parse('https://api.tickflow.app')`.
@@ -35,4 +38,10 @@ class TickflowChatConfig {
   /// host routes to login here (e.g. fires its session-expired provider). The
   /// same `ChatAuthException` also surfaces on the session state's error.
   final void Function()? onAuthFailure;
+
+  /// Turn-lifecycle signals for analytics/logging: started, first-token
+  /// latency, completed (with escalation), failed (typed, no content),
+  /// user-escalated. Called synchronously; exceptions it throws are
+  /// swallowed so telemetry can never break a conversation.
+  final void Function(ChatTelemetryEvent event)? onTelemetry;
 }
