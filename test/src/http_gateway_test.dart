@@ -57,6 +57,10 @@ void main() {
     expect(seen.url.path, '/chat/sessions');
     expect(seen.headers['Authorization'], 'Bearer jwt-1');
     expect(seen.body, '{}', reason: 'empty object, not a bare empty body');
+    expect(
+      seen.headers['X-Client-Version'],
+      'tickflow_chat/$tickflowChatVersion',
+    );
     expect(session.id, 's1');
     expect(session.mode, SessionMode.ai);
   });

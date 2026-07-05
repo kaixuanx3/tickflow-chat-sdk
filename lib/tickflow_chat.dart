@@ -17,3 +17,4 @@ export 'src/models/chat_role.dart';
 export 'src/models/chat_session.dart';
 export 'src/models/stream_event.dart';
 export 'src/transport/chat_transport.dart';
+export 'src/version.dart';
