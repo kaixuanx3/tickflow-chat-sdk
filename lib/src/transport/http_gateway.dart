@@ -8,6 +8,7 @@ import '../models/chat_exception.dart';
 import '../models/chat_message.dart';
 import '../models/chat_session.dart';
 import '../models/stream_event.dart';
+import '../version.dart';
 import 'http_client_factory.dart';
 import 'sse_parser.dart';
 
@@ -144,6 +145,9 @@ class HttpGateway {
   Map<String, String> _headers(String jwt) => {
     'Authorization': 'Bearer $jwt',
     'Content-Type': 'application/json',
+    // Ops can correlate wire behavior with the SDK build (P5). The backend's
+    // CORS reflects requested headers, so this passes web preflight.
+    'X-Client-Version': 'tickflow_chat/$tickflowChatVersion',
   };
 
   /// Token per request; on 401 ask the provider once more (the host may have
