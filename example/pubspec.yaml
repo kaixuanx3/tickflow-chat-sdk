@@ -1,0 +1,18 @@
+name: tickflow_chat_example
+description: Minimal host app for the tickflow_chat SDK — inbox + thread against a local Tickflow backend.
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.3.0
+  tickflow_chat:
+    path: ../
+
+flutter:
+  uses-material-design: true

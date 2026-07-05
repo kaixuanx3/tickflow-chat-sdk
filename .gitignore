@@ -32,3 +32,6 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
+
+# Example app is unpinned, like the package itself.
+example/pubspec.lock
