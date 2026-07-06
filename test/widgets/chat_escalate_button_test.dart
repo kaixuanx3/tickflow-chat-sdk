@@ -42,7 +42,39 @@ Future<void> settle(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('escalates the session, shows the notice and disables itself', (
+  testWidgets(
+    'confirming the dialog escalates, shows the notice and disables itself',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(app());
+        await settle(tester);
+
+        await tester.tap(find.byTooltip('Talk to a person'));
+        await settle(tester);
+        expect(find.text('Talk to a person?'), findsOneWidget);
+
+        // The dialog's confirming action carries the affordance text.
+        await tester.tap(find.widgetWithText(FilledButton, 'Talk to a person'));
+        await settle(tester);
+
+        // ChatView reacts: the async email follow-up notice appears.
+        expect(find.textContaining('by email'), findsOneWidget);
+        // The session is escalated and the button reads as spent.
+        final state = tester.container().read(chatSessionProvider('s1'));
+        expect(state.session.status, SessionStatus.escalated);
+        expect(
+          tester
+              .widget<IconButton>(
+                find.widgetWithIcon(IconButton, Icons.support_agent),
+              )
+              .onPressed,
+          isNull,
+        );
+      });
+    },
+  );
+
+  testWidgets('cancelling the dialog leaves the session untouched', (
     tester,
   ) async {
     await tester.runAsync(() async {
@@ -51,20 +83,12 @@ void main() {
 
       await tester.tap(find.byTooltip('Talk to a person'));
       await settle(tester);
+      await tester.tap(find.text('Cancel'));
+      await settle(tester);
 
-      // ChatView reacts: the async email follow-up notice appears.
-      expect(find.textContaining('by email'), findsOneWidget);
-      // The session is escalated and the button reads as spent.
+      expect(find.textContaining('by email'), findsNothing);
       final state = tester.container().read(chatSessionProvider('s1'));
-      expect(state.session.status, SessionStatus.escalated);
-      expect(
-        tester
-            .widget<IconButton>(
-              find.widgetWithIcon(IconButton, Icons.support_agent),
-            )
-            .onPressed,
-        isNull,
-      );
+      expect(state.session.status, SessionStatus.open);
     });
   });
 }
