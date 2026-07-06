@@ -46,9 +46,24 @@ class ChatSessionNotifier extends Notifier<ChatSessionState> {
   @override
   ChatSessionState build() {
     final client = ref.watch(chatClientProvider);
+    // Seed the session's real mode/status from the inbox cache when it is
+    // alive — the history endpoint returns only messages, so without this
+    // an escalated thread opened from the list would render as a fresh AI
+    // session (wrong title, no notice, escalate re-enabled). ref.exists
+    // guards the read: never spawn a session-list fetch just to open a
+    // thread.
+    var initial = ChatSession.stub(sessionId);
+    if (ref.exists(chatInboxProvider)) {
+      final cached = ref
+          .read(chatInboxProvider)
+          .value
+          ?.where((s) => s.id == sessionId)
+          .firstOrNull;
+      if (cached != null) initial = cached;
+    }
     // Resume, not just attach: history hydrates in the background
     // (state.isLoading) while the engine is immediately usable for sending.
-    _engine = client.resumeSession(ChatSession.stub(sessionId));
+    _engine = client.resumeSession(initial);
     final sub = _engine.changes.listen((s) => state = s);
     // Opening and leaving the thread both clear its unread badge — the
     // dispose mark covers replies that arrived while the user was reading.
