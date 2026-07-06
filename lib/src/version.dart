@@ -2,4 +2,4 @@
 /// (`X-Client-Version: tickflow_chat/<version>`).
 ///
 /// Keep in sync with pubspec.yaml — asserted by `test/version_sync_test.dart`.
-const String tickflowChatVersion = '1.0.0';
+const String tickflowChatVersion = '1.1.0';

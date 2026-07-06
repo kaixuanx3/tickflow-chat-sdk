@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+* `ChatEscalateButton` now asks for confirmation before handing the session
+  to human support (localized dialog, en/中文) — a stray tap no longer files
+  a handoff.
+* Threads opened from a live inbox inherit the session's real mode/status,
+  so an escalated thread renders escalated immediately (identity, follow-up
+  notice, disabled escalate) instead of as a fresh AI session.
+
 ## 1.0.0
 
 First stable release. Semver applies to the three public barrels
