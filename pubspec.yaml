@@ -1,6 +1,6 @@
 name: tickflow_chat
 description: Client-side chat SDK for the Tickflow app — AI-first support assistant with human fallback on the same thread.
-version: 1.0.0
+version: 1.1.0
 publish_to: none
 homepage: https://github.com/kaixuanx3/tickflow-chat-sdk
 
