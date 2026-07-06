@@ -144,6 +144,89 @@ void main() {
     expect(state.messages.single.content, 'earlier answer');
   });
 
+  test('a thread opened via a live inbox inherits its real status', () async {
+    var listCalls = 0;
+    final container = ProviderContainer(
+      overrides: [
+        chatConfigProvider.overrideWithValue(
+          TickflowChatConfig(
+            apiBaseUrl: Uri.parse('https://api.test'),
+            tokenProvider: () async => 'jwt',
+            httpClientFactory: () => MockClient.streaming((req, _) async {
+              if (req.url.path == '/chat/sessions' && req.method == 'GET') {
+                listCalls++;
+                return http.StreamedResponse(
+                  Stream.value(
+                    utf8.encode(
+                      '{"sessions":[{"id":"s1","mode":"ai","status":"escalated"}]}',
+                    ),
+                  ),
+                  200,
+                );
+              }
+              return http.StreamedResponse(
+                Stream.value(utf8.encode('{"messages":[]}')),
+                200,
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    // Inbox alive with data — like the list screen sitting under the thread.
+    final inboxSub = container.listen(chatInboxProvider, (_, _) {});
+    addTearDown(inboxSub.close);
+    await container.read(chatInboxProvider.future);
+
+    final sub = container.listen(chatSessionProvider('s1'), (_, _) {});
+    addTearDown(sub.close);
+    expect(
+      container.read(chatSessionProvider('s1')).session.status,
+      SessionStatus.escalated,
+      reason: 'the escalated thread must not open as a fresh AI session',
+    );
+    expect(listCalls, 1, reason: 'seeding reads the cache, never refetches');
+  });
+
+  test(
+    'opening a thread without a live inbox never fetches the list',
+    () async {
+      var listCalls = 0;
+      final container = ProviderContainer(
+        overrides: [
+          chatConfigProvider.overrideWithValue(
+            TickflowChatConfig(
+              apiBaseUrl: Uri.parse('https://api.test'),
+              tokenProvider: () async => 'jwt',
+              httpClientFactory: () => MockClient.streaming((req, _) async {
+                if (req.url.path == '/chat/sessions' && req.method == 'GET') {
+                  listCalls++;
+                }
+                return http.StreamedResponse(
+                  Stream.value(utf8.encode('{"messages":[]}')),
+                  200,
+                );
+              }),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final sub = container.listen(chatSessionProvider('s1'), (_, _) {});
+      addTearDown(sub.close);
+      await pumpEventQueue();
+      expect(listCalls, 0);
+      expect(
+        container.read(chatSessionProvider('s1')).session.status,
+        SessionStatus.open,
+        reason: 'no cache → stub defaults',
+      );
+    },
+  );
+
   test('opening and leaving a thread records read marks', () async {
     final recorded = <String>[];
     final container = ProviderContainer(
