@@ -86,6 +86,11 @@ abstract class TickflowChatLocalizations {
 
   /// Generic retry action (inbox load failure and the like).
   String get retryLabel;
+
+  /// Confirmation before handing the session to human support.
+  String get escalateConfirmTitle;
+  String get escalateConfirmBody;
+  String get cancelLabel;
 }
 
 class TickflowChatLocalizationsEn extends TickflowChatLocalizations {
@@ -136,6 +141,14 @@ class TickflowChatLocalizationsEn extends TickflowChatLocalizations {
   String get recentConversations => 'Recent conversations';
   @override
   String get retryLabel => 'Retry';
+  @override
+  String get escalateConfirmTitle => 'Talk to a person?';
+  @override
+  String get escalateConfirmBody =>
+      "We'll hand this conversation to our support team — they'll follow up "
+      'here and by email.';
+  @override
+  String get cancelLabel => 'Cancel';
 }
 
 class TickflowChatLocalizationsZh extends TickflowChatLocalizations {
@@ -181,6 +194,12 @@ class TickflowChatLocalizationsZh extends TickflowChatLocalizations {
   String get recentConversations => '最近的对话';
   @override
   String get retryLabel => '重试';
+  @override
+  String get escalateConfirmTitle => '联系人工客服？';
+  @override
+  String get escalateConfirmBody => '我们会将此对话转交给客服团队——他们将在此并通过邮件跟进。';
+  @override
+  String get cancelLabel => '取消';
 }
 
 class _TickflowChatLocalizationsDelegate
